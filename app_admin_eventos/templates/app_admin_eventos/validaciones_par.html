@@ -1,0 +1,137 @@
+{% extends 'validaciones_par_asi_eva.html' %}
+{% load static %}
+
+{% block title %}Validación Asistentes{% endblock %}
+
+
+{% block validar %}
+
+<style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            padding: 5px;
+            border: 1px solid #ccc;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+            text-align: center;
+        }
+</style>
+
+<div class="container mt-5 pt-2">
+    <h2 class="text-center p-5">Participantes Preinscritos al Evento: {{ evento.eve_nombre }}</h2>
+    <form method="get">
+        <div class="row mx-5 mt-3">
+            <div class=" col mb-4">
+                <input type="text" name="query" class="form-control" placeholder="Buscar por cédula, nombre o apellido" value="{{ query }}">
+            </div>
+            
+            <div class="col mb-4">
+                <select name="estado" class="form-control">
+                    <option value="">Buscar por estado</option>
+                    <option value="Pendiente" {% if estado == "Pendiente" %}selected{% endif %}>Pendiente</option>
+                    <option value="Aprobado" {% if estado == "Aprobado" %}selected{% endif %}>Aprobado</option>
+                    <option value="Rechazado" {% if estado == "Rechazado" %}selected{% endif %}>Rechazado</option>
+                </select>
+            </div>
+        
+            <div class=" justify-content-center">
+                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <a href="?" class="btn btn-secondary">Limpiar</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<hr>
+
+
+<table>
+    <thead>
+        <tr>
+            <th>Cédula</th>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Correo</th>
+            <th>Telefono</th>
+            <th>Documentación Aportada</th>
+            <th>Qr de acceso</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for p in participantes %}
+            <tr>
+                <td>{{ p.cedula }}</td>
+                <td>{{ p.nombre }}</td>
+                <td>{{ p.apellido }}</td>
+                <td>{{ p.correo }}</td>
+                <td>{{ p.telefono }}</td>
+                
+                <td class="text-center">
+                    {% if p.documentos %}
+                        <a href="{{ p.documentos.url }}" target="_blank" class="btn btn-outline-info btn-sm">Ver Documento</a>
+                    {% else %}
+                        No aportado
+                    {% endif %}
+                </td>
+                <td>
+                    {% if p.qr %}
+                        <button type="button" class="btn btn-outline-info btn-sm" data-bs-toggle="modal" data-bs-target="#qrModal" onclick="mostrarQR('{{ p.qr.url }}')">
+                            Ver QR
+                        </button>
+                    {% else %}
+                        No generado
+                    {% endif %}
+                </td>
+
+                <td>{{ p.estado }}</td>
+                <td class=" text-center">
+                    <div class="btn-group">
+                        <a href="{% url 'rechazar_par' evento.id p.id %}" class="btn btn-danger  ">Rechazado</a>
+                        <a href="{% url 'aprobar_par' evento.id p.id %}" class="btn btn-success">Aprobado</a>
+                    </div>
+                </td>
+            
+                {% empty %}
+                    <tr>
+                        <td colspan="6">No hay participantes preinscritos.</td>
+                    </tr>
+                {% endfor %}
+            </tr>
+    </tbody>
+</table>
+<div class="text-start pt-5">
+    <a href="{% url 'validaciones' evento.id %}" class="btn btn-secondary m-1">Atrás</a>
+</div>
+
+
+<!-- Modal para mostrar el QR -->
+<div class="modal fade" id="qrModal" tabindex="-1" aria-labelledby="qrModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="qrModalLabel">QR de Acceso</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+      <div class="modal-body text-center">
+        <img id="qrImage" src="" alt="QR" class="img-fluid" style="max-height: 400px;">
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    function mostrarQR(url) {
+        const qrImage = document.getElementById('qrImage');
+        qrImage.src = url;
+    }
+</script>
+
+
+{% endblock %}

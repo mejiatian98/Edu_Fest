@@ -1,0 +1,101 @@
+{% extends 'dashboard_principal_participante.html' %}
+{% load static %}
+
+{% block title %}Editar Preinscripción{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <h2 class="text-center px-5  contenedor">Editar Mis Datos y Documento</h2>
+
+    <form method="post" enctype="multipart/form-data" class="p-4 rounded border shadow bg-light">
+        {% csrf_token %}
+
+        <div class="mb-3">
+            <label class="form-label">Cédula:</label>
+            <input type="text" class="form-control" value="{{ participante.par_id }}" disabled>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Correo:</label>
+            <input type="email" class="form-control" value="{{ usuario.email }}" disabled>
+        </div>
+
+        {{ form.as_p }}
+
+        <div class="mb-3">
+            <label class="form-label">Documento actual:</label><br>
+            {% if relacion.par_eve_documentos %}
+                <a href="{{ relacion.par_eve_documentos.url }}" target="_blank" class="btn btn-outline-primary">Ver documento</a>
+            {% else %}
+                <span class="text-muted">No cargado aún</span>
+            {% endif %}
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Actualizar Documento:</label>
+            <input type="file" id="pdfInput" name="par_eve_documentos" class="form-control" accept=".pdf">
+        </div>
+
+        <!-- Contenedor para previsualizar el PDF -->
+        <div id="pdfPreviewContainer" style="display:none; margin-top: 1rem;">
+            <label class="form-label">Vista previa del documento:</label>
+            <iframe id="pdfPreview" width="100%" height="400px" style="border: 1px solid #ccc;"></iframe>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Contraseña Antigua</label>
+            <input type="password" name="nueva_contrasena" class="form-control"
+                placeholder="Contraseña Antigua"
+                autocomplete="off" readonly
+                onfocus="this.removeAttribute('readonly');"
+                onpaste="return True;" ondrop="return false;">
+        </div>
+        
+        <div class = "row">
+            <div class=" col-md-6  mb-3">
+                <label class="form-label">Contraseña Nueva</label>
+                <input type="password" name="confirmar_contrasena_nueva" class="form-control"
+                    placeholder="Contraseña Nueva"
+                    autocomplete="off" readonly
+                    onfocus="this.removeAttribute('readonly');"
+                    onpaste="return false;" ondrop="return false;">
+            </div>
+            <div class="col-md-6  mb-3">
+                <label class="form-label">Confirmar Contraseña Nueva</label>
+                <input type="password" name="confirmar_contrasena" class="form-control"
+                    placeholder="Confirmar contraseña nueva"
+                    autocomplete="off" readonly
+                    onfocus="this.removeAttribute('readonly');"
+                    onpaste="return false;" ondrop="return false;">
+            </div>
+        </div>
+
+
+
+        <div class="text-center m-5">
+            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+        </div>
+    </form>
+
+    <hr class ="mt-5">
+
+        <div class ="text-center m-4"  >
+            <a href="{% url 'eliminar_participante' participante.par_id %}" 
+            class="btn btn-danger btn-sm"
+            onclick="return confirm('¿Estás seguro de que deseas eliminar este evaluador? Esta acción no se puede deshacer.');">
+                Eliminar mis datos
+            </a>
+        </div>
+
+        <p class="text-muted mt-3">
+            Al hacer clic en <strong>"Eliminar mis datos"</strong>, se eliminará permanentemente tu cuenta como evaluador, así como todas las relaciones con los eventos en los que estás inscrito. Esta acción no se puede deshacer.
+        </p>
+    <hr class="mt-5">
+
+    <div class="text-start mt-5">
+        <a href="{% url 'dashboard_participante' %}" class="btn btn-secondary  mt-3">Volver al Dashboard</a>
+    </div>
+</div>
+
+
+{% endblock %}

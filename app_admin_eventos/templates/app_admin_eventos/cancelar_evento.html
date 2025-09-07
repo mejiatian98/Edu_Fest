@@ -1,0 +1,70 @@
+{% extends 'dashboard_principal_admin.html' %}
+{% load static %}
+
+{% block title %}Info Evento{% endblock %}
+
+{% block content %}
+
+<div class="container mt-5 mb-5">
+    <div class=" mb-3">
+        <hr class="mt-5">
+        <div class="py-5 px-4 bg-light rounded shadow-sm">
+            <h4 class="text-center text-danger fw-bold pb-5">¿Estás seguro de que deseas cancelar este evento?</h4>
+            <p class="text-justify">
+                Al proceder con la cancelación, debes tener en cuenta que dispones de un período de <strong>5 horas</strong> para revertir esta decisión en caso de cambiar de opinión. Durante ese tiempo, el evento permanecerá en estado de <em>cancelación pendiente</em>, lo que significa que aún no se ejecutarán acciones definitivas.
+            </p>
+            <p class="text-justify">
+                Sin embargo, si dejas transcurrir este lapso de 5 horas sin realizar ninguna acción para reactivar el evento, se procederá con la <strong>cancelación definitiva</strong>. Esto implica que:
+            </p>
+            <ul class="mb-4">
+                <li>Todos los datos relacionados con este evento serán <strong>eliminados permanentemente</strong>, incluyendo la información de los participantes inscritos, documentos asociados, inscripciones, evaluaciones y cualquier otro registro vinculado.</li>
+                <li>Se enviará automáticamente un <strong>correo de notificación</strong> a cada persona que haya participado o se haya inscrito en este evento, informándoles formalmente de que el evento ha sido cancelado.</li>
+                <li><strong>Esta acción no podrá deshacerse</strong> una vez transcurrido el tiempo establecido.</li>
+            </ul>
+            <p class="text-justify">
+                Te recomendamos considerar cuidadosamente esta decisión antes de continuar, ya que su impacto afectará a todas las personas involucradas. Si estás completamente seguro, puedes proceder con la cancelación; de lo contrario, puedes ignorar este mensaje y conservar el evento activo.
+            </p>
+            {% if evento.eve_estado == 'Cancelado' %}
+                <div class="text-center pt-4">
+                    <h4 class="text-center text-danger fw-bold">El evento ya se encuentra en estado de cancelación pendiente.</h4>
+                    {% if evento.eve_cancelacion_iniciada %}
+                        <h5 class="text-warning fw-bold mt-3">Tiempo restante para cancelar definitivamente:</h5>
+                        <h4 id="countdown" class="text-danger"
+                            data-cancel-time="{{ evento.eve_cancelacion_iniciada|date:'Y-m-d H:i:s' }}">
+                        </h4>
+                        
+                        <form action="{% url 'normal_evento' evento.id %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-success m-4">Revertir cambios</button>
+                        </form>
+                        <a href="{% url 'cancelar_evento' evento.id %}" class="btn btn-danger">Cancelar definitivamente</a>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="text-center pt-4">
+                    <form id="cancelar-form" action="{% url 'evento_estado_cancelado' evento.id  %}" method="post" onsubmit="return confirmarCancelacion();">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger m-4">Cancelar Evento</button>
+                    </form>
+
+
+                    <script>
+                        function confirmarCancelacion() {
+                            return confirm("¿Estás seguro de que deseas cancelar este evento?");
+                        }
+                    </script>
+
+                </div>
+            {% endif %}
+        </div>
+
+        <hr>
+
+        <div class="text-start pt-5">
+            <a href="{% url 'dashboard_admin' %}" class="btn btn-secondary m-1">Atrás</a>
+        </div>
+    </div>
+</div>
+
+
+{% endblock %}

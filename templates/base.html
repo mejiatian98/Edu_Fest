@@ -1,0 +1,348 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{% static 'css/css/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <link rel="shortcut icon" href="{% static 'img/favicon.png' %}" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <title>{% block title %} {% endblock %} | Edu-Fest</title>
+</head>
+<body>
+    <header>
+    <div class="container">
+        <nav class="navbar navbar-expand-lg">
+                <!-- Logo y nombre -->
+                <a class="navbar-brand d-flex align-items-center text-white fw-bold" href="/" style="font-size: 1.7rem;">
+                    <img src="{% static 'img/favicon.png' %}" alt="favicon" class="img-fluid me-2" style="width: 50px; height: 50px;">
+                    Edu-Fest
+                </a>
+
+                <!-- Botón responsive -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
+                    aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <!-- Contenido de la barra -->
+                <div class="collapse navbar-collapse" id="navbarContent">
+                    <!-- Buscador centrado -->
+                    <form id="buscador-navbar" class="d-flex mx-auto my-2" role="search" style="max-width: 500px; width: 100%;">
+                        <input id="input-busqueda-navbar" class="form-control me-2" type="search" name="nombre"
+                            placeholder="Buscar..." aria-label="Search">
+                    </form>
+
+                    <!-- Menú derecho -->
+                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0 d-flex align-items-center gap-2">
+                        <!-- Mostrar nombre y botón de cerrar sesión según el rol en sesión -->
+                        {% if request.session.admin_id %}
+                            <li class="nav-item">
+                                <a href="{% url 'dashboard_admin' %}">
+                                <span class="nav-link text-white fw-bold">🟢 Administrador {{ request.session.admin_nombre }}</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
+                                    <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                                </a>
+                            </li>
+                        {% elif request.session.evaluador_id %}
+                            <li class="nav-item">
+                                <a href="{% url 'dashboard_evaluador' %}">
+                                <span class="nav-link text-white fw-bold">🟢 Evaluador {{ request.session.evaluador_nombre }}</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
+                                    <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                                </a>
+                            </li>
+                        {% elif request.session.participante_id %}
+                            <li class="nav-item">
+                                <a href="{% url 'dashboard_participante' %}">
+                                <span class="nav-link text-white fw-bold">🟢 Participante {{ request.session.participante_nombre }}</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
+                                    <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                                </a>
+                            </li>
+                        {% elif request.session.asistente_id %}
+                            <li class="nav-item">
+                                <a href="{% url 'dashboard_asistente' %}">
+                                <span class="nav-link text-white fw-bold">🟢 Asistente {{ request.session.asistente_nombre }}</span>
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
+                                    <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                                </a>
+                            </li>
+                        {% else %}
+                            <!-- Si nadie ha iniciado sesión, mostrar botón de iniciar -->
+                            <li class="nav-item">
+                                <a class="nav-link text-white fw-semibold" href="{% url 'login_view' %}">
+                                    <i class="bi bi-person-circle"></i> Iniciar sesión
+                                </a>
+                            </li>
+                        {% endif %}
+
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </div>
+</header>
+ 
+
+<!-- ########################################################################################################## -->
+
+
+<main class="mb-5">
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-success text-center alert-fixed-top" role="alert">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    
+    {% block content %}
+
+
+        <!-- Contenedor blanco (nivel 1) -->
+    <section class="contenedor-blanco">
+        
+        <!-- Contenedor gris claro (nivel 2) -->
+        <div class="contenedor-gris">
+            
+            <!-- Logo -->
+            <div class="caja-logo">
+                <img src="{% static 'img/logo.png' %}" alt="Logo">
+            </div>
+
+            <!-- Texto en recuadro verde (nivel 3) -->
+            <div class="caja-info">
+                <h3 class="fw-bold ">EventSoft</h3>
+                <p>EventSoft es una plataforma digital enfocada en promover eventos <br> educativos, culturales y académicos,
+                        facilitando la inscripción, <br> participación y evaluación en un entorno accesible y profesional.</p>
+
+            </div>
+        </div>
+    </section>
+
+   <section class="contenedor-mv">
+    <!-- Misión -->
+        <div class="caja-mv">
+            <h4>Misión</h4>
+            <p>
+                Brindar una plataforma digital innovadora que facilite la gestión integral de eventos educativos, 
+                culturales y académicos, promoviendo la participación activa, el aprendizaje continuo y el acceso 
+                inclusivo a experiencias que fortalezcan el desarrollo personal y profesional de los participantes.
+            </p>
+        </div>
+
+        <!-- Visión -->
+        <div class="caja-mv">
+            <h4>Visión</h4>
+            <p>
+                Ser la plataforma líder en Latinoamérica en la organización y gestión de eventos educativos, 
+                culturales y académicos, reconocida por su accesibilidad, confiabilidad y capacidad de transformar 
+                la manera en que las personas se conectan, aprenden y comparten conocimiento en un entorno digital.
+            </p>
+        </div>
+    </section>
+
+
+        <nav class="navbar navbar-expand-lg ">
+            <div class="container">
+                <form method="get" class="mb-4 rounded shadow-sm pt-4" >
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <input type="text" name="nombre" class="form-control" placeholder="Nombre del evento" value="{{ request.GET.nombre }}">
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" name="ciudad" class="form-control" placeholder="Ciudad" value="{{ request.GET.ciudad }}">
+                        </div>
+                        <br>
+                        <br>
+                        <br>
+                        <div class="col-md-3">
+                            <select name="area" id="id_area" class="form-select">
+                                <option value="">Área</option>
+                                {% for area in areas %}
+                                <option value="{{ area.id }}" {% if request.GET.area == area.id|stringformat:"s" %}selected{% endif %}>{{ area.are_nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select name="categoria" id="id_categoria" class="form-select">
+                                <option value="">Categoría</option>
+                                {% for cat in categorias %}
+                                <option value="{{ cat.id }}" data-area="{{ cat.cat_area_fk.id }}" {% if request.GET.categoria == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.cat_nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select name="costo" class="form-select">
+                                <option value="">¿Tiene costo?</option>
+                                <option value="De pago" {% if request.GET.costo == "De pago" %}selected{% endif %}>Con costo</option>
+                                <option value="Es gratis" {% if request.GET.costo == "Es gratis" %}selected{% endif %}>Gratuito</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select name="estado" class="form-select">
+                                <option value="">Estado</option>
+                                <option value="Publicado" {% if request.GET.estado == "Publicado" %}selected{% endif %}>Publicado</option>
+                                <option value="Finalizado" {% if request.GET.estado == "Finalizado" %}selected{% endif %}>Finalizado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-3  text-center">
+                        <button type="submit" class="btn btn-primary">Filtrar</button>
+                        <a href="{% url 'pagina_principal' %}" class="btn btn-secondary">Limpiar</a>
+                    </div>
+                </form>
+            </div>
+        </nav>
+
+        <div class="contenedor-principal">
+            {% for evento in eventos %}
+            <div class="card cursor-pointer"
+                data-url="{% url 'ver_info_evento' evento.id %}"
+                onclick="location.href = this.getAttribute('data-url');">
+
+                <img src="{{ evento.eve_imagen.url }}" alt="{{ evento.eve_nombre }}">
+                
+                <div class="card-body">
+                    <h5>{{ evento.eve_nombre }}</h5>
+                </div>
+
+                {% if evento.eve_estado == 'Finalizado' %}
+                <div class="pb-4">
+                    <div class="card-footer bg-danger text-white col py-4">
+                        <small><p class="mb-0">El evento se borrará en 30 días, descarga tu certificado.</p></small>
+                        <div class="row-md-2">
+                            <div id="countdown-{{ evento.id }}" class="row"></div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="card-footer align-items-center">
+                    <div class="fecha">
+                        <div class="dia">{{ evento.eve_fecha_inicio|date:"D" }}</div>
+                        <div class="numero">{{ evento.eve_fecha_inicio|date:"d" }}</div>
+                        <div class="mes">{{ evento.eve_fecha_inicio|date:"M Y" }}</div>
+                    </div>
+                    <div class="info d-flex flex-column mb-2">
+                        <p><strong>{{ evento.eve_ciudad }}</strong></p>
+                        <p><strong>{{ evento.eve_lugar }}</strong></p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        
+    {% endblock %}
+</main>
+
+<style>
+.cursor-pointer {
+    cursor: pointer;
+}
+
+</style>
+
+<!-- ########################################################################################################## -->
+
+
+<script>
+    function startCountdown(eventId, endDate) {
+    const countdownElement = document.getElementById(`countdown-${eventId}`);
+    const end = new Date(endDate);
+    const updateCountdown = () => {
+        const now = new Date().getTime();
+        const distance = end - now;
+        if (distance > 0) {
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            countdownElement.innerHTML = `Quedan ${days}d ${hours}h ${minutes}m ${seconds}s`;
+            countdownElement.classList.add('countdown-text');
+        } else {
+            countdownElement.innerHTML = 'El tiempo ha terminado.';
+        }
+    };
+    updateCountdown();
+    setInterval(updateCountdown, 1000);
+}
+
+{% for evento in eventos %}
+    {% if evento.eve_estado == 'Finalizado' %}
+        startCountdown({{ evento.id }}, '{{ evento.deletion_date|date:"Y-m-d" }}');
+    {% endif %}
+{% endfor %}
+
+</script>
+
+<!-- ########################################################################################################## -->
+
+    <footer class="footer-corporativo text-white py-4">
+        <div class="container">
+            
+            <!-- Fila superior con enlaces -->
+            <div class="row justify-content-between text-center text-md-start mb-3">
+                <div class="col-md-12 d-flex flex-wrap justify-content-center  gap-3">
+                    <a href="#" class="footer-link">Contáctanos</a>
+                    <a href="#" class="footer-link">Preguntas frecuentes</a>
+                    <a href="#" class="footer-link">Aviso de privacidad</a>
+                    <a href="#" class="footer-link">Aviso de cookies</a>
+                    <a href="#" class="footer-link">Aviso Legal</a>
+                    <a href="#" class="footer-link">
+                        <img src="{% static 'img/flag_Colombia.png' %}" alt="País" width="20" class="me-1"> País (COL)
+                    </a>
+                </div>
+            </div>
+            <!-- Texto legal -->
+            <div class="text-center">
+                <small>&copy; <span id="year"></span> Edu-Fest. Todos los derechos reservados.</small>
+            </div>
+
+        </div>
+    </footer>
+
+
+<!-- ########################################################################################################## -->
+    
+    <script src="{% static 'js/js/bootstrap.bundle.min.js' %}"></script>
+    <script src="{% static 'js/obtener_tiempo.js' %}"></script>
+    <script src="{% static 'js/busqueda_atomatica.js' %}"></script>
+    <script src="{% static 'js/filtrar_area_categoria.js' %}"></script>
+    <script src="{% static 'js/conteo_evento_vencido.js' %}"></script>
+    <script src="{% static 'js/alerta_time_desaparece.js' %}"></script>
+    <script src="{% static 'js/preview_img_soporte.js' %}"></script>
+    <script src="{% static 'js/efecto_imagen.js' %}"></script>
+    <script src="{% static 'js/Previsualizarimg_pdfs.js' %}"></script>
+    <script src="{% static 'js/previsualizarpdf.js' %}"></script>
+    
+    
+
+
+    
+
+    <!-- Bootstrap JS (coloca esto justo antes del cierre de </body>) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>
+
+
+    
+    
+    
+</body>
+</html>
