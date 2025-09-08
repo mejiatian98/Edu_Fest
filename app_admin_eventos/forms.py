@@ -69,3 +69,19 @@ class EditarUsuarioAdministradorForm(forms.ModelForm):
         if Usuario.objects.filter(username=username).exists():
             raise forms.ValidationError("Este nombre de usuario ya está registrado.")
         return username
+    
+
+
+
+class CategoriaForm(forms.ModelForm):
+    class Meta:
+        model = Categoria
+        fields = ["cat_nombre", "cat_descripcion", "cat_area_fk"]
+        labels = {
+            "cat_nombre": "Nombre de la Categoría",
+            "cat_descripcion": "Descripción de la Categoría",
+            "cat_area_fk": "Área",
+        }
+        widgets = {
+            "cat_descripcion": forms.Textarea(attrs={"rows": 3}),
+        }

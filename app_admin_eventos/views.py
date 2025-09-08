@@ -13,7 +13,10 @@ from app_usuarios.models import AdministradorEvento , Usuario
 from app_participantes.models import ParticipanteEvento 
 from app_asistentes.models import  AsistenteEvento
 from app_evaluadores.models import EvaluadorEvento, Calificacion
-from app_admin_eventos.forms import EventoForm, EditarUsuarioAdministradorForm
+from app_admin_eventos.forms import EventoForm, EditarUsuarioAdministradorForm, CategoriaForm
+from django.views.generic.edit import FormView
+
+
 from app_usuarios.models import Participante, Asistente, Evaluador
 from django.contrib import messages
 from django.shortcuts import redirect, get_object_or_404
@@ -328,7 +331,76 @@ class EventoCreateView(CreateView):
         return reverse('dashboard_admin')
 
 
+############################# --- Crear Categoria y Area ---##############################
 
+@method_decorator(admin_required, name='dispatch')
+class CreateCategoriaView(CreateView):
+    model = Categoria
+    form_class = CategoriaForm
+    template_name = "crear_categoria.html"
+
+    def get_success_url(self):
+        return reverse("lista_categorias")
+
+
+
+
+############################# --- Lista de Categorías ---##############################
+
+
+@method_decorator(admin_required, name='dispatch')
+class ListaCategoriasView(ListView):
+    model = Categoria
+    template_name = "lista_categorias.html"
+    context_object_name = "categorias"
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        area_id = self.request.GET.get("area")  # obtenemos el id del área desde el filtro
+        if area_id:
+            queryset = queryset.filter(cat_area_fk_id=area_id)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["areas"] = Area.objects.all()
+        context["area_seleccionada"] = self.request.GET.get("area", "")
+        return context
+
+
+
+@admin_required
+def eliminar_categoria(request, pk):
+    categoria = get_object_or_404(Categoria, pk=pk)
+    area = categoria.cat_area_fk  # Área asociada
+
+    # Guardamos el nombre antes de eliminar
+    cat_nombre = categoria.cat_nombre
+    area_nombre = area.are_nombre
+
+    # Eliminar la categoría
+    categoria.delete()
+
+    # Si el área ya no tiene categorías, la eliminamos también
+    if not area.categoria_set.exists():
+        area.delete()
+        messages.success(
+            request,
+            f"La categoría '{cat_nombre}' y el área '{area_nombre}' fueron eliminadas exitosamente."
+        )
+    else:
+        messages.success(
+            request,
+            f"La categoría '{cat_nombre}' fue eliminada exitosamente."
+        )
+
+    return redirect("lista_categorias")
+
+
+
+
+    
+    
 
 
 ###########################--- Actualizar Evento ---##########################

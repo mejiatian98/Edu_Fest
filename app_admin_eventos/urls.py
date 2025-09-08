@@ -6,6 +6,9 @@ from app_admin_eventos.views import CertificadosView, cargar_personas
 urlpatterns = [
     path('dashboard/admin/', views.MenuPrincipalView.as_view(), name='dashboard_admin'),
     path('crear/', views.EventoCreateView.as_view(), name='crear_evento'),
+    path('crear_categoria_area/', views.CreateCategoriaView.as_view(), name='crear_categoria_area'),
+    path("lista_categorias/", views.ListaCategoriasView.as_view(), name="lista_categorias"),
+    path("eliminar_categoria/<int:pk>/", views.eliminar_categoria, name="eliminar_categoria"),
 
     #Contraseña editar al iniciar la primera sesion
     path('cambiar_password/admin/', views.CambioPasswordAdminView.as_view(), name='cambio_password_admin'),
