@@ -48,3 +48,6 @@ class AdministradorEvento(models.Model):
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Administrador de Evento"
+
+
+

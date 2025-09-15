@@ -1,0 +1,10 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block userlinks %}
+    {{ block.super }}
+    /
+    <a href="{% static 'manuales/super_admin.pdf' %}" target="_blank">
+        Ver Manual
+    </a>
+{% endblock %}

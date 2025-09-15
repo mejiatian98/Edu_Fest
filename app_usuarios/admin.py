@@ -112,6 +112,9 @@ class MemoriaEventoAdmin(admin.ModelAdmin):
     search_fields = ['nombre']
 
 
+
+
+
 # --------------------------
 # Registro en admin
 # --------------------------
