@@ -8,7 +8,7 @@
 
 
 <div class="container mt-5 mb-5">
-    <h2 class="contenedor">INFORMACIÓN DEL EVENTO</h2>
+    <h2 class="contenedor">Información del Evento</h2>
     <div class="carta mb-3">
         <div class ="row md-6 p-4">
             <div class="col-md-5 d-flex justify-content-center align-items-center">
@@ -57,8 +57,8 @@
                             <br>
                             <div class="col-md-12 text-center">
                             {% if evento.eve_programacion %}
-                                <a href="{{ evento.eve_programacion.url }}" download target="_blank" class="btn btn-success mb-1 ">Descargar</a>
-                                <a href="{{ evento.eve_programacion.url }}" target="_blank" class="btn btn-success mb-1">Previsualizar programación</a>
+                                <a href="{{ evento.eve_programacion.url }}" download target="_blank" class="btn btn-outline-success mb-1 ">Descargar</a>
+                                <a href="{{ evento.eve_programacion.url }}" target="_blank" class="btn btn-outline-success mb-1">Previsualizar programación</a>
                             {% else %}
                                 No disponible
                             {% endif %}
@@ -69,7 +69,7 @@
             </div>
         </div>   
         <div class="text-start pt-5">
-            <a href="{% url 'dashboard_asistente' %}" class="btn btn-secondary m-1">Volver al Dashboard</a>
+            <a href="{% url 'dashboard_asistente' %}" class="btn btn-outline-secondary mt-3">Volver al inicio</a>
         </div>  
     </div>       
 </div>

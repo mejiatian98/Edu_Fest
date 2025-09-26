@@ -58,7 +58,7 @@ body {
 
 .btn-link {
     font-size: 14px;
-    color: #007bff;
+    color: #000000;
 }
 
 .login-wrapper {
@@ -72,7 +72,7 @@ body {
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.08);
 }
 .login-image {
-    background: #ffffff;
+    background: linear-gradient(to bottom, #4cd137, #006400); /* degradado verde */
     display: flex;
     align-items: center;
     justify-content: center;

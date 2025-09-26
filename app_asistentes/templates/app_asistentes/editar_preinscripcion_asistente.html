@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="container mt-5 mb-5">
-    <h2 class="text-center px-5  contenedor">Editar Mis Datos y Documento</h2>
+    <h2 class="text-center px-5  contenedor">Editar datos y documentos</h2>
 
     <form method="post" enctype="multipart/form-data" class="p-4 rounded border shadow bg-light">
         {% csrf_token %}
@@ -74,7 +74,7 @@
 
 
         <div class="text-center m-5">
-            <button type="submit" class="btn btn-primary">Guardar Cambios</button>
+            <button type="submit" class="btn btn-outline-success">Guardar Cambios</button>
         </div>
     </form>
 
@@ -94,7 +94,7 @@
     <hr class="mt-5">
 
     <div class="text-start mt-5">
-        <a href="{% url 'dashboard_asistente' %}" class="btn btn-secondary  mt-3">Volver al Dashboard</a>
+        <a href="{% url 'dashboard_asistente' %}" class="btn btn-outline-secondary mt-3">Volver al inicio</a>
     </div>
 </div>
 

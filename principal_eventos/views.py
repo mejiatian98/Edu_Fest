@@ -10,6 +10,15 @@ from app_usuarios.models import Usuario, Evaluador, Participante, AdministradorE
 from django.contrib.auth import authenticate, login, logout
 from .decorador import visitor_required
 from django.utils.decorators import method_decorator
+from django.views import View
+from django.core.mail import send_mail
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.contrib.auth import get_user_model
+from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import default_token_generator
+from django.conf import settings
+
+User = get_user_model()
 
 
 
@@ -105,6 +114,112 @@ def logout_view(request):
     request.session.flush()
     return redirect('pagina_principal')
 
+########### Restablecer contraseña ###########
+
+@method_decorator(visitor_required, name='dispatch')
+class RestablecerContrasenaView(ListView):
+    model = Usuario
+    template_name = 'olvide_contra.html'
+    context_object_name = 'usuarios'
+
+    def get_queryset(self):
+        return Usuario.objects.all()
+
+
+@method_decorator(visitor_required, name='dispatch')
+class RestablecioUnPasswordView(View):
+    template_name = "olvide_contra.html"
+
+    def get(self, request, *args, **kwargs):
+        return render(request, self.template_name, {"error": None})
+
+    def post(self, request, *args, **kwargs):
+        email_username = request.POST.get("email_username")
+        error = None
+
+        try:
+            user = User.objects.get(email=email_username)
+        except User.DoesNotExist:
+            error = "El correo no existe en nuestros registros."
+            return render(request, self.template_name, {"error": error})
+
+        # Generar token y UID
+        token = default_token_generator.make_token(user)
+        uid = urlsafe_base64_encode(force_bytes(user.pk))
+
+        reset_link = f"{request.build_absolute_uri('/reset/')}{uid}/{token}/"
+
+        subject = "Restablecimiento de contraseña - Event-Soft"
+        message = f"""
+        Hola {user.username},
+
+        Haz clic en el siguiente enlace para restablecer tu contraseña:
+        {reset_link}
+
+        Si no solicitaste este cambio, ignora este correo.
+        """
+        send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+
+        return render(request, self.template_name, {
+            "error": "Se ha enviado un enlace de restablecimiento a tu correo electrónico."
+        })
+
+
+@method_decorator(visitor_required, name='dispatch')
+class ResetPasswordConfirmView(View):
+    template_name = "reset_password_confirm.html"
+
+    def get(self, request, uidb64, token, *args, **kwargs):
+        try:
+            uid = urlsafe_base64_decode(uidb64).decode()
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+
+        if user is not None and default_token_generator.check_token(user, token):
+            return render(request, self.template_name, {
+                "validlink": True,
+                "uidb64": uidb64,
+                "token": token
+            })
+        else:
+            return render(request, self.template_name, {"validlink": False})
+
+    def post(self, request, uidb64, token, *args, **kwargs):
+        try:
+            uid = urlsafe_base64_decode(uidb64).decode()
+            user = User.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+            user = None
+
+        if user is not None and default_token_generator.check_token(user, token):
+            password1 = request.POST.get("password1")
+            password2 = request.POST.get("password2")
+
+            if password1 != password2:
+                return render(request, self.template_name, {
+                    "validlink": True,
+                    "uidb64": uidb64,
+                    "token": token,
+                    "error": "Las contraseñas no coinciden."
+                })
+
+            if len(password1) < 6:
+                return render(request, self.template_name, {
+                    "validlink": True,
+                    "uidb64": uidb64,
+                    "token": token,
+                    "error": "La contraseña debe tener al menos 6 caracteres."
+                })
+
+            # Guardar la nueva contraseña
+            user.set_password(password1)
+            user.save()
+
+            return redirect("login_view")
+
+        else:
+            return render(request, self.template_name, {"validlink": False})
 
 
 ########### VISTAS PRINCIPALES VISITANTES ###########

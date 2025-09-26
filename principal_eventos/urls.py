@@ -50,6 +50,10 @@ urlpatterns = [
 
     path('login/', views.login_view, name='login_view'),
     path('logout/', views.logout_view, name='logout_view'),
+    path('reset_password/', views.RestablecerContrasenaView.as_view(), name='restablecer_contrasena'),
+    path('resetio_password/', views.RestablecioUnPasswordView.as_view(), name='reset_password'),
+    path("reset/<uidb64>/<token>/", views.ResetPasswordConfirmView.as_view(), name="password_reset_confirm"),
+
 
     
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

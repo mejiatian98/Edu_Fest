@@ -6,7 +6,7 @@
 {% block content %}
 
 <div class="container mt-5 mb-5">
-    <h2 class="contenedor text-center mb-5">ACCESO AL EVENTO</h2>
+    <h2 class="contenedor text-center mb-5">Acceso al evento {{ evento.eve_nombre }}</h2>
 
     <div class="row justify-content-center">
         <!-- CLAVE DE ACCESO -->
@@ -30,7 +30,7 @@
                 {% if asistente.asi_eve_qr %}
                     <h5 class="mb-3">QR de acceso:</h5>
                     <img src="{{ asistente.asi_eve_qr.url }}" alt="QR acceso {{ evento.eve_nombre }}" class="img-fluid rounded mb-3" style="max-width: 200px; height: auto; margin: auto;">
-                    <a href="{{ asistente.asi_eve_qr.url }}" download class="btn btn-outline-info w-100">Descargar QR</a>
+                    <a href="{{ asistente.asi_eve_qr.url }}" download class="btn btn-outline-success w-100">Descargar QR</a>
                 {% else %}
                     <p class="text-muted">No hay QR disponible.</p>
                 {% endif %}
@@ -52,7 +52,7 @@
     </div>
 
     <div class="text-start mt-5">
-        <a href="{% url 'pagina_principal' %}" class="btn btn-secondary">Volver a la página principal</a>
+        <a href="{% url 'dashboard_asistente' %}" class="btn btn-outline-secondary mt-3">Volver al inicio</a>
     </div>
 </div>
 

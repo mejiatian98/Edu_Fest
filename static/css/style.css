@@ -6,6 +6,23 @@ html, body {
 }
 
 
+.soporte-flotante {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1000;
+    color: white;
+    padding: 10px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.soporte-flotante:hover {
+    background-color: #0b5f00;
+}
+
+
 hr {
     width: 100%; 
     height: 1; 
@@ -99,7 +116,7 @@ hr {
 /* Fecha */
 .fecha {
     text-transform: uppercase;
-    color: #007bff;
+    color:  #006400;
     padding: 10px;
 }
 
@@ -181,8 +198,7 @@ header {
 }
 
 .contenedor{
-
-    background-color:  #007bff;
+    background: linear-gradient(to bottom, #4cd137, #006400); /* degradado verde */
     color: #ffffff;
     border-radius: 10px;
     padding: 10px;
@@ -273,7 +289,7 @@ main {
 
 /* Nivel 3: recuadro verde para el texto */
 .caja-info {
-    background-color: #c5dbd0; /* verde pastel suave */
+    background: linear-gradient(to bottom, #4cd137, #006400); /* degradado verde */
     color: #000;              /* texto en negro para que resalte */
     padding: 20px;
     border-radius: 10px;
@@ -315,6 +331,7 @@ main {
 .caja-mv {
     flex: 1;
     background-color: #f1f1f1; /* gris claro */
+    color: #3e7400;
     padding: 20px;
     border-radius: 10px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
