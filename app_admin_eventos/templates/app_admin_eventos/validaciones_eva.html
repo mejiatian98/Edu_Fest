@@ -86,7 +86,7 @@
             </div>
 
             <div class="justify-content-center">
-                <button type="submit" class="btn btn-primary">Filtrar</button>
+                <button type="submit" class="btn btn-success">Filtrar</button>
                 <a href="?" class="btn btn-secondary">Limpiar</a>
             </div>
         </div>
@@ -138,8 +138,8 @@
                 <td>{{ eva.estado }}</td>
                 <td class="text-center">
                     <div class="btn-group">
-                        <a href="{% url 'rechazar_eva' evento.id eva.id %}" class="btn btn-danger">Rechazar</a>
-                        <a href="{% url 'aprobar_eva' evento.id eva.id %}" class="btn btn-success">Aprobar</a>
+                        <a href="{% url 'rechazar_eva' evento.id eva.id %}" class="btn btn-outline-danger">Rechazar</a>
+                        <a href="{% url 'aprobar_eva' evento.id eva.id %}" class="btn btn-outline-success">Aprobar</a>
                     </div>
                 </td>
             </tr>
@@ -152,7 +152,7 @@
 </table>
 
 <div class="text-start pt-5">
-    <a href="{% url 'validaciones' evento.id %}" class="btn btn-secondary m-1">Atrás</a>
+    <a href="{% url 'dashboard_admin' %}" class="btn btn-secondary m-1">Volver al Inicio</a>
 </div>
 
 <!-- Modal soporte -->

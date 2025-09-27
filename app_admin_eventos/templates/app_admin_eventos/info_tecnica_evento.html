@@ -1,4 +1,4 @@
-{% extends 'dashboard_principal_evaluador.html' %}
+{% extends 'dashboard_principal_admin.html' %}
 {% load static %}
 
 {% block title %}Información técnica del evento{% endblock %}
@@ -15,11 +15,11 @@
 
     {% if evento.eve_informacion_tecnica %}
         <div class="border rounded p-4 shadow-sm jumbotron">
-            <div class="text-center m-5">
+            <div class="text-center">
                 <p><strong>Archivo cargado:</strong></p>
 
                 <!-- Botón para ver el archivo -->
-                <div class="mb-3 ">
+                <div class="mb-2 ">
                     <a href="{{ evento.eve_informacion_tecnica.url }}" target="_blank" class="btn btn-outline-primary mb-5 w-50">
                         Ver archivo
                     </a>
@@ -27,10 +27,10 @@
 
 
                 <!-- Botón para eliminar el archivo -->
-                <div class="mt-5">
+                <div class="mt-2">
                     <form method="post">
                         {% csrf_token %}
-                        <button type="submit" name="eliminar_archivo" class="btn btn-outline-danger"
+                        <button type="submit" name="eliminar_archivo" class="btn btn-danger"
                             onclick="return confirm('¿Estás seguro de que deseas eliminar el archivo?');">
                             Eliminar archivo
                         </button>
@@ -48,14 +48,14 @@
                     <label for="informacion_tecnica" class="form-label">Cargar archivo PDF:</label>
                     <input type="file" name="informacion_tecnica" id="informacion_tecnica" class="form-control" accept=".pdf" required>
                 </div>
-                <button type="submit" class="btn btn-success">Subir información técnica</button>
+                <button type="submit" class="btn btn-outline-success">Subir información técnica</button>
             </form>
         </div>
     {% endif %}
 
 
     <div class="text-start mt-4">
-        <a href="{% url 'dashboard_admin'%}" class="btn btn-secondary">Volver al Dashboard</a>
+        <a href="{% url 'dashboard_admin'%}" class="btn btn-secondary">Volver al Inicio</a>
     </div>
 
 

@@ -5,14 +5,13 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h2 class="mb-4">Crear Nueva Categoría</h2>
+    <h2 class="mb-4 contenedor">Crear Nueva Categoría</h2>
 
     <form method="post">
         {% csrf_token %}
         
-        <div class="card p-4 mb-3 shadow-sm">
-            <h4>Datos de la Categoría</h4>
-            <div class="form-group mb-3">
+        <div class="p-4 mb-3 shadow-sm caja-mv rounded">
+            <div class="form-group mb-3 ">
                 <label for="id_cat_area_fk">Área</label>
                 {{ form.cat_area_fk }}
             </div>
@@ -24,14 +23,15 @@
                 <label for="id_cat_descripcion">Descripción de la Categoría</label>
                 {{ form.cat_descripcion }}
             </div>
+            <div>
+                <button type="submit" class="btn btn-success">Guardar</button>
+                <a href="{% url 'lista_categorias' %}" class="btn btn-info">Ver lista de categorías</a>
+            </div>
         </div>
 
-        <div>
-            <button type="submit" class="btn btn-primary">Guardar</button>
-            <a href="{% url 'lista_categorias' %}" class="btn btn-secondary">Ver lista de categorías</a>
-        </div>
+        
     </form>
 
-    <a href="{% url 'dashboard_admin' %}" class="btn btn-secondary mt-5">Volver al Dashboard</a>
+    <a href="{% url 'dashboard_admin' %}" class="btn btn-secondary mt-5">Volver al Inicio</a>
 </div>
 {% endblock %}

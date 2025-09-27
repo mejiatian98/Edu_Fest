@@ -110,42 +110,6 @@ class MenuPrincipalView(ListView):
     context_object_name = 'eventos'
 
     
-
-    def get_queryset(self):
-        admin_id = self.request.session.get('admin_id')
-        eventos = Evento.objects.filter(eve_administrador_fk=admin_id).order_by('eve_fecha_inicio')
-
-        nombre = self.request.GET.get('nombre')
-        ciudad = self.request.GET.get('ciudad')
-        categoria_id = self.request.GET.get('categoria')
-        area_id = self.request.GET.get('area')
-        costo = self.request.GET.get('costo')
-        estado = self.request.GET.get('estado')
-
-        if nombre:
-            eventos = eventos.filter(eve_nombre__icontains=nombre)
-        if ciudad:
-            eventos = eventos.filter(eve_ciudad__icontains=ciudad)
-        if categoria_id:
-            eventos = eventos.filter(categorias__id=categoria_id)
-        if area_id:
-            eventos = eventos.filter(categorias__cat_area_fk__id=area_id)
-        if costo:
-            eventos = eventos.filter(eve_tienecosto__iexact=costo)
-        if estado:
-            eventos = eventos.filter(eve_estado__iexact=estado)
-
-        return eventos.distinct()
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        admin_id = self.request.session.get('admin_id')
-        context['areas'] = Area.objects.all()
-        context['categorias'] = Categoria.objects.all()
-        context['admin'] = AdministradorEvento.objects.get(pk=admin_id)
-        return context
-    
-    
     #Iniciar sesion una vez y cambiar contraseña
     def dispatch(self, request, *args, **kwargs):
         admin_id = request.session.get('admin_id')
@@ -155,6 +119,8 @@ class MenuPrincipalView(ListView):
             return redirect('cambio_password_admin')
 
         return super().dispatch(request, *args, **kwargs)
+
+
 
 ##################### --- Cambio de Contraseña Administrador --- #####################
 

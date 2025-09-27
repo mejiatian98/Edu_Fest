@@ -3,7 +3,7 @@
 
 {% block content %}
 <div class="container py-5">
-  <h1>📚 Memorías: {{ evento.eve_nombre }}</h1>
+  <h1 class="contenedor text-center">📚 Memorías: {{ evento.eve_nombre }}</h1>
 
   <!-- Formulario subida -->
   <div class="card mb-4 shadow-sm">
@@ -22,7 +22,7 @@
           <label class="form-label">Archivo</label>
           <input type="file" name="archivo" accept=".pdf,.zip,.pptx" class="form-control" required>
         </div>
-        <button type="submit" class="btn btn-primary">Subir Memoria</button>
+        <button type="submit" class="btn btn-outline-success">Subir Memoria</button>
       </form>
     </div>
   </div>
@@ -55,6 +55,10 @@
   {% empty %}
     <p class="text-muted">Aún no hay memorias subidas.</p>
   {% endfor %}
+</div>
+
+<div class="text-end pt-5">
+    <a href="{% url 'dashboard_admin' %}" class="btn btn-secondary">Volver al Inicio</a>
 </div>
 
 </div>

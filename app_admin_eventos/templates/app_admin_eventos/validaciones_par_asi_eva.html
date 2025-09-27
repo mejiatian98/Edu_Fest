@@ -10,14 +10,14 @@
     {% block subvalidaciones %}
     <div class="row mb-4 justify-content-center">
         <div class="col-md-2">
-            <a href="{% url 'validacion_par' evento.id %}" class="btn btn-info mb-3">Validar Participante</a>
+            <a href="{% url 'validacion_par' evento.id %}" class="btn btn-outline-success mb-3">Validar Participante</a>
         </div>
         <div class="col-md-2">
-            <a href="{% url 'validacion_asi' evento.id %}" class="btn btn-info mb-3">Validar Asistentes</a>
+            <a href="{% url 'validacion_asi' evento.id %}" class="btn btn-outline-success mb-3">Validar Asistentes</a>
         </div>
        
         <div class="col-md-2">
-            <a href="{% url 'validacion_eva' evento.id %}" class="btn btn-info mb-3">Validar Evaluadores</a>
+            <a href="{% url 'validacion_eva' evento.id %}" class="btn btn-outline-success mb-3">Validar Evaluadores</a>
         </div>
     </div>
     {% endblock subvalidaciones %}
@@ -25,7 +25,7 @@
 
     {% block validar %}
     <div class="text-start pt-5">
-        <a href="{% url 'dashboard_admin' %}" class="btn btn-secondary m-1">Atrás</a>
+        <a href="{% url 'dashboard_admin' %}" class="btn btn-secondary m-1">Volver al Inicio</a>
     </div>
     {% endblock validar %}
 

@@ -70,14 +70,8 @@ urlpatterns = [
     path('evento/<int:evento_id>/memorias/admin/',views.MemoriasAdminView.as_view(),name='memorias_admin'),
     path('evento/<int:evento_id>/memoria/<int:memoria_id>/borrar/', views.BorrarMemoriaAdminView.as_view(), name='borrar_memoria_admin'),
 
+    path("eventos/<int:evento_id>/previsualizar/<str:tipo>/<int:persona_id>/",views.previsualizar_certificado,name="previsualizar_certificado"),
 
-
-
-    path(
-    "eventos/<int:evento_id>/previsualizar/<str:tipo>/<int:persona_id>/",
-    views.previsualizar_certificado,
-    name="previsualizar_certificado"
-),
 
 
 

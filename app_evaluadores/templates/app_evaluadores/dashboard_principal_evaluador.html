@@ -65,6 +65,17 @@
         {% endfor %}
     {% endif %}
 
+    <section class="contenedor-mv caja-info">
+        <div class="text-center  caja-mv p-4 ">
+            <p>Acá puedes encontrar el manual de uso de la plataforma</p>
+            <a href="{% static 'manuales/evaluador.pdf' %}" target="_blank" 
+                class="btn btn-sm btn-outline-success document-btn">
+                <i class="fas fa-file-pdf"></i>
+                <span>Manual de uso</span>
+            </a>
+        </div>
+    </section>
+
     {% if eventos_pendientes %}
         <div class="p-5">
             <div class="container p-4">
@@ -176,16 +187,9 @@
             </div> <!-- Cierre correcto de contenedor_simple -->
         </div> <!-- Cierre correcto de container -->
         {% endfor %}
-    {% endblock %}
 
-        <div class="text-center my-4">
-            <p>Acá puedes encontrar el manual de uso de la plataforma</p>
-            <a href="{% static 'manuales/evaluador.pdf' %}" target="_blank" 
-                class="btn btn-sm btn-success document-btn">
-                <i class="fas fa-file-pdf"></i>
-                <span>Manual de uso</span>
-            </a>
-        </div>
+        
+    {% endblock %}
 
 </main>
 
