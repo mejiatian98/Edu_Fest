@@ -3,6 +3,8 @@ from django.contrib.auth.admin import UserAdmin
 from django.core.mail import send_mail
 from django.utils import timezone
 from datetime import timedelta
+from django.conf import settings
+
 
 from .models import (
     Usuario, AdministradorEvento, Asistente, Participante, Evaluador,
@@ -29,7 +31,7 @@ class UsuarioAdmin(UserAdmin):
                 send_mail(
                     subject="Código de acceso a Eventos",
                     message=f"Hola {usuario.username}, tu código de acceso es: {codigo}",
-                    from_email="noreply@plataforma.com",
+                    from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[usuario.email],
                 )
         self.message_user(request, "Códigos de acceso enviados con éxito.", level=messages.SUCCESS)

@@ -162,18 +162,18 @@
             <p>Acá puedes encontrar el manual de uso de la plataforma</p>
             <a href="{% static 'manuales/asistentes.pdf' %}" target="_blank" 
                 class="btn btn-sm btn-success document-btn">
-                <i class="fas fa-file-pdf"></i> Manual de uso
+                <i class="fas fa-file-pdf"></i> Manual de uso</span>
             </a>
         </div>
     </section>
     <hr class="container my-3">
 
-        <nav class="navbar navbar-expand-lg ">
+        <nav class="">
             
             <div class="container">
                 <form method="get" class="mb-4 rounded shadow-sm pt-4" >
-                    <h2 class="text-center mb-4">Buscar evento</h2>
-                    <div class="row g-3">
+                    <h2 class="text-center caja-mv mb-4 ">Buscar evento</h2>
+                    <div class="row">
                         <div class="col-md-6">
                             <input type="text" name="nombre" class="form-control" placeholder="Nombre del evento" value="{{ request.GET.nombre }}">
                         </div>
