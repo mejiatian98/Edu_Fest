@@ -193,7 +193,7 @@ class AsistenteCreateView(View):
                     f"Adjunto encontrarás tu código QR que deberás presentar el día del evento.\n\n"
                 )
 
-            body += "¡Gracias por registrarte!\nEquipo de EduFest"
+            body += "¡Gracias por registrarte!\nEquipo de Event-Soft."
 
             email = EmailMessage(
                 subject=subject,

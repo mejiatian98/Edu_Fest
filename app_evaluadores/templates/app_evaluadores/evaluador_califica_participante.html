@@ -4,7 +4,7 @@
 {% block title %}Calificar {% if es_grupo %}Grupo{% else %}Participante{% endif %}{% endblock %}
 
 {% block content %}
-<div class="container-fluid px-4 py-4">
+<div class="container">
     <!-- Header Section -->
     <div class="row mb-4">
         <div class="col-12">
@@ -23,7 +23,7 @@
                     {% endif %}
                 </div>
                 <div class="text-end">
-                    <span class="badge bg-info fs-6 px-3 py-2">{{ evento.eve_nombre }}</span>
+                    <h4 class=" caja-mv">{{ evento.eve_nombre }}</h4>
                 </div>
             </div>
         </div>
@@ -186,6 +186,11 @@
             </div>
         </div>
     </form>
+    <div>
+        <a href="{% url 'calificar_participantes' evento.id %}" class="btn btn-secondary mt-4">
+            <i class="fas fa-home me-1"></i>Volver a la Lista de Participantes
+        </a>
+    </div>
 </div>
 
 <style>

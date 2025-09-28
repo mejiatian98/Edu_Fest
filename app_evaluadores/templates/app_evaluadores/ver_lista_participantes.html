@@ -29,7 +29,7 @@
                     <p class="card-text cedula"><strong>Cédula:</strong> {{ participante.par_id }}</p>
                     <p class="card-text"><strong>Correo:</strong> {{ participante.usuario.email }}</p>
                     <div class="text-center">
-                        <a href="{% url 'calificando_participante' participante.par_id evento.id %}" class="btn btn-primary mt-2">
+                        <a href="{% url 'calificando_participante' participante.par_id evento.id %}" class="btn btn-success w-100 mt-2">
                             Evaluar
                         </a>
                     </div>
@@ -40,7 +40,7 @@
     </div>
 
     <div class="text-start pt-5">
-        <a href="{% url 'dashboard_evaluador' %}" class="btn btn-secondary">Volver al Dashboard</a>
+        <a href="{% url 'dashboard_evaluador' %}" class="btn btn-secondary">Volver al Inicio</a>
     </div>
 </div>
 {% endblock %}

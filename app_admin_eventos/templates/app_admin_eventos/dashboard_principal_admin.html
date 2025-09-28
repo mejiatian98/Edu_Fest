@@ -79,9 +79,7 @@
             </div>
         </section>
 
-        <hr class="container my-3">
 
-        <h1 class="text-center my-4">Panel de Administración de Eventos</h1>
 
         {% if eventos|length == 0 %}
             <div class="alert alert-info text-center" role="alert">
@@ -375,6 +373,11 @@
                 </div>
             </div>
         </div>
+
+        <!-- Modal de soporte -->
+    <div>
+        {% include 'modal_soporte.html' %}
+    </div>
     {% endblock %}
 
 </main>

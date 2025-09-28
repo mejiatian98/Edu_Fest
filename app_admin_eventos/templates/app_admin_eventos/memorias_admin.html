@@ -6,7 +6,7 @@
   <h1 class="contenedor text-center">📚 Memorías: {{ evento.eve_nombre }}</h1>
 
   <!-- Formulario subida -->
-  <div class="card mb-4 shadow-sm">
+  <div class="caja-mv my-5">
     <div class="card-body">
       <form
         action="{% url 'memorias_admin' evento.id %}"
@@ -31,7 +31,7 @@
 <div class="row row-cols-1 row-cols-md-2 g-3">
   {% for m in memorias %}
     <div class="col">
-      <div class="card shadow-sm">
+      <div class="card shadow-sm p-3">
         <div class="card-body">
           <h5 class="card-title">{{ m.nombre }}</h5>
           <p class="text-muted small">Subido: {{ m.subido_en|date:"Y-m-d H:i" }}</p>

@@ -194,7 +194,7 @@ class EvaluadorCreateView(View):
 
                 try:
                     send_mail(
-                        subject="Registro exitoso a EduFest",
+                        subject="Registro exitoso a Event-Soft",
                         message=(
                             f"Hola Evaluador {usuario.first_name},\n\n"
                             f"Te has registrado correctamente al evento \"{evento.eve_nombre}\".\n"
@@ -203,9 +203,9 @@ class EvaluadorCreateView(View):
                             f"Correo registrado: {usuario.email}\n"
                             f"Contraseña generada: {password_plana}\n\n"
                             f"Recomendamos cambiar tu contraseña después de iniciar sesión.\n\n"
-                            f"Atentamente,\nEquipo EduFest"
+                            f"Atentamente,\nEquipo Event-Soft"
                         ),
-                        from_email="no-reply@edufest.com",
+                        from_email="no-reply@Event-Soft.com",
                         recipient_list=[usuario.email],
                         fail_silently=False
                     )

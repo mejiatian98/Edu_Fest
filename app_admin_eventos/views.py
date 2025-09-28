@@ -719,7 +719,7 @@ class AprobarParticipanteView(View):
                     f"Total de miembros aprobados en el grupo: {len(miembros_aprobados)}\n\n"
                     "Adjunto encontrarás tu código QR personal que deberás presentar al ingresar.\n\n"
                     "¡Felicitaciones al equipo completo!\n"
-                    "Equipo EduFest"
+                    "Equipo Event-Soft"
                 )
 
                 email = EmailMessage(
@@ -776,7 +776,7 @@ class AprobarParticipanteView(View):
                 f"Tu clave de acceso al evento es: {clave}\n\n"
                 "Adjunto encontrarás el código QR que deberás presentar al ingresar.\n\n"
                 "¡Gracias por participar!\n"
-                "Equipo EduFest"
+                "Equipo Event-Soft"
             )
 
             email = EmailMessage(
@@ -849,7 +849,7 @@ class RechazarParticipanteView(View):
                     f"Esta decisión afecta a todo el grupo ({len(miembros_rechazados)} miembros).\n\n"
                     "Si tienes alguna duda, por favor contáctanos.\n\n"
                     "Atentamente,\n"
-                    "Equipo de EduFest"
+                    "Equipo de Event-Soft"
                 )
 
                 try:
@@ -895,7 +895,7 @@ class RechazarParticipanteView(View):
                 f"Lamentamos informarte que has sido rechazado para participar en el evento: '{evento.eve_nombre}'.\n"
                 "Si tienes alguna duda, por favor contáctanos.\n\n"
                 "Atentamente,\n"
-                "Equipo de EduFest"
+                "Equipo de Event-Soft"
             )
 
             try:
@@ -1003,7 +1003,7 @@ class AprobarAsistenteView(View):
             f"Tu clave de acceso es: {clave}\n\n"
             f"Adjunto encontrarás tu código QR para el acceso.\n\n"
             f"Gracias por tu interés.\n\n"
-            f"Equipo EduFest"
+            f"Equipo Event-Soft"
         )
         email = EmailMessage(
             subject=subject,
@@ -1050,7 +1050,7 @@ class RechazarAsistenteView(View):
             f"Lamentamos informarte que has sido rechazado para asistir al evento: '{evento.eve_nombre}'.\n"
             "Si tienes alguna duda, por favor contáctanos.\n\n"
             "Atentamente,\n"
-            "Equipo de EduFest"
+            "Equipo de Event-Soft"
         )
         recipient_email = asistente.usuario.email
 
@@ -1421,7 +1421,7 @@ class AprobarEvaluadorView(View):
             f"Tu clave de acceso es: {clave}\n\n"
             "Adjunto encontrarás tu código QR de acceso.\n\n"
             "¡Gracias por tu participación!\n"
-            "Equipo EduFest"
+            "Equipo Event-Soft"
         )
 
         email = EmailMessage(
@@ -1464,7 +1464,7 @@ class RechazarEvaluadorView(View):
             f"Lamentamos informarte que no has sido aprobado como evaluador para el evento: '{evento.eve_nombre}'.\n"
             "Si tienes preguntas, contáctanos.\n\n"
             "Atentamente,\n"
-            "Equipo EduFest"
+            "Equipo Event-Soft"
         )
 
         try:

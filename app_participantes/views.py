@@ -278,7 +278,7 @@ class ParticipanteCreateView(View):
                         mensaje_lider += "Recomendamos cambiar tu contraseña después de iniciar sesión."
 
                         send_mail(
-                            subject="Registro exitoso a EduFest - Líder del proyecto",
+                            subject="Registro exitoso a Event-Soft - Líder del proyecto",
                             message=mensaje_lider,
                             from_email=None,
                             recipient_list=[usuario.email],
@@ -298,7 +298,7 @@ class ParticipanteCreateView(View):
                                                 f"Recomendamos cambiar tu contraseña después de iniciar sesión."
 
                                 send_mail(
-                                    subject="Registro exitoso a EduFest - Miembro del grupo",
+                                    subject="Registro exitoso a Event-Soft - Miembro del grupo",
                                     message=mensaje_miembro,
                                     from_email=None,
                                     recipient_list=[miembro['email']],
