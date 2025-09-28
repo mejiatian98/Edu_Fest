@@ -1,4 +1,4 @@
-{% extends 'dashboard_principal_evaluador.html' %}
+{% extends 'dashboard_principal_admin.html' %}
 {% load static %}
 
 {% block title %}Detalle de Calificación - {{ participante.par_nombre }}{% endblock %}
@@ -8,15 +8,15 @@
     <h2 class="contenedor">Detalle de Calificación</h2>
 
     <div class="contenedor">
-        <div class="card-body">
-            <h4 class="card-title">Información del Participante</h4>
-            <p><strong>Nombre:</strong> {{ participante.par_nombre }}</p>
-            <p><strong>Cédula:</strong> {{ participante.id }}</p>
+        <div class="caja-mv p-4">
+            <h4 class="caja-mv box-shadow p-3 mb-5 ">Información del Participante</h4>
+            <p><strong>Nombre:</strong> {{ participante.usuario.first_name }} {{ participante.usuario.last_name }}</p>
+            <p><strong>Cédula:</strong> {{ participante.par_id }}</p>
             <p><strong>Evento:</strong> {{ evento.eve_nombre }}</p>
         </div>
     </div>
 
-    <div class="card mt-4">
+    <div class="caja-mv mt-4">
         <div class="card-body">
             {% if calificaciones %}
             <table class="table table-bordered mt-4">
@@ -31,7 +31,7 @@
                 <tbody>
                     {% for cal in calificaciones %}
                     <tr>
-                        <td>{{ cal.cal_evaluador_fk.eva_nombre }}</td>
+                        <td>{{ cal.cal_evaluador_fk.usuario.username }}</td>
                         <td>{{ cal.cal_criterio_fk.cri_descripcion }}</td>
                         <td>{{ cal.cal_criterio_fk.cri_peso }}</td>
                         <td>{{ cal.cal_valor }}</td>

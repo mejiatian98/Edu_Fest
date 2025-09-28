@@ -8,8 +8,8 @@
     <h2 class="contenedor">Detalle de Calificación</h2>
 
     <div class="contenedor">
-        <div class="card-body">
-            <h4 class="card-title">Información del Participante</h4>
+        <div class="caja-mv p-4">
+            <h4 class="caja-mv box-shadow p-3 mb-5 ">Información del Participante</h4>
             <p><strong>Nombre:</strong> {{ participante.usuario.username }}</p>
             <p><strong>Cédula:</strong> {{ participante.par_id }}</p>
             <p><strong>Evento:</strong> {{ evento.eve_nombre }}</p>
@@ -18,7 +18,7 @@
 
 
 
-    <div class=" mt-4">
+    <div class="caja-mv mt-4">
         <div class="card-body">
             {% if calificaciones %}
             <table class="table table-bordered mt-4">

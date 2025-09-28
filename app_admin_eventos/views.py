@@ -1296,7 +1296,6 @@ class VerPodioParticipantesAdminView(View):
 
 
 ########## VER NOTAS DE PARTICIPANTES #########
-
 @method_decorator(admin_required, name='dispatch')
 class DetalleCalificacionAdminView(DetailView):
     template_name = 'ver_detalle_calificacion_podio_admin.html'
@@ -1304,7 +1303,7 @@ class DetalleCalificacionAdminView(DetailView):
     model = Participante
 
     def get_object(self):
-        return get_object_or_404(Participante, id=self.kwargs['participante_id'])
+        return get_object_or_404(Participante, par_id=self.kwargs['participante_id'])
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1317,7 +1316,7 @@ class DetalleCalificacionAdminView(DetailView):
         administrador = get_object_or_404(AdministradorEvento, pk=admin_id)
         
         if evento.eve_administrador_fk != administrador:
-            return redirect('acceso_denegado')  # Redirigir a acceso denegado si el administrador no tiene acceso
+            return redirect('acceso_denegado')
 
         participante_evento = get_object_or_404(
             ParticipanteEvento,
@@ -1338,7 +1337,7 @@ class DetalleCalificacionAdminView(DetailView):
         })
 
         return context
-    
+
 
 ########## VALIDACION EVALUADOR #########
 

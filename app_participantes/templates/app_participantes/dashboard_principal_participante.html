@@ -98,8 +98,8 @@
             </div>
         </section>
         {% for evento in eventos %}
-            <div class="container mb-5">
-                <div class="contenedor_simple shadow-lg">
+            <div class="contenedor-mv caja-info mb-5">
+                <div class="caja-mv p-4">
                     <div class="row no-gutters">
                         <div class="col-md-5 d-flex flex-column justify-content-around align-items-center p-3">
                             <div class="text-center">
@@ -146,40 +146,87 @@
                         </div>
                     </div>
                     <div class="text-center m-5">
-                        <a href="{% url 'ver_info_evento_par' evento.id %}" class="btn btn-info w-100">Más Información</a>
+                        <a href="{% url 'ver_info_evento_par' evento.id %}" class="btn btn-warning w-100"> Ver Información</a>
                     </div>
                     <hr>
                     <h3 class="text-center">Acciones</h3>
-                    <div class="text-start m-4 row row-cols-1 row-cols-sm-2 row-cols-md-3 g-2">
-                        <div class="col">
-                            <a href="{% url 'ingreso_evento_par' evento.id %}" class="btn btn-info w-100">Acceso al evento</a>
-                        </div>
-                        <div class="col">
-                            {% if relacion.par_eve_documentos %}
-                                <a href="{{ relacion.par_eve_documentos.url }}" target="_blank" class="btn btn-info w-100">Mi Documento</a>
-                            {% else %}
-                                <span class="text-muted">Documento no cargado aún</span>
-                            {% endif %}
-                        </div>
 
-                        <div class="col">
-                        <a href="{% url 'memorias_participante' evento.id %}" class="btn btn-secondary w-100">
-                            <i class="bi bi-folder-fill me-1"></i> Memorías
-                        </a>
+                    <!-- Criterios -->
+                    <div class="accordion-item p-3">
+                        <h2 class="accordion-header collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCriterios">
+                            <div class="d-flex justify-content-between align-items-center w-100">
+                                <span>📑 Criterios</span>
+                                <i class="bi bi-chevron-double-down"></i>
+                            </div>
+                        </h2>
+                        
+
+                        <div id="collapseCriterios" class="accordion-collapse collapse" data-bs-parent="#accionesAccordion">
+                            <div class="accordion-body text-center">
+                                
+                                {% if criterios_completos|dict_get:evento.id %}
+                                    <a href="{% url 'ver_criterios_par' evento.id %}" class="btn btn-outline-success w-50">
+                                {% else %}
+                                    <button class="btn btn-secondary w-100" disabled>No hay criterios válidos</button>
+                                {% endif %}
+                    
+                                <i class="bi bi-body-text"></i> Ver lista de Criterios
+                                </a>
+                                <p class="mt-2 text-muted small">Accede a la lista de criterios a calificar.</p>
+                            </div>
                         </div>
-                        <div class="col">
-                            {% if criterios_completos|dict_get:evento.id %}
-                                <a href="{% url 'ver_criterios_par' evento.id %}" class="btn btn-info w-100">Ver Criterios</a>
-                            {% else %}
-                                <button class="btn btn-secondary w-100" disabled>No hay criterios</button>
-                            {% endif %}
+                    </div>
+
+                    <!-- Memorías -->
+                    <div class="accordion-item p-3">
+                        <h2 class="accordion-header collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMemorias">
+                            <div class="d-flex justify-content-between align-items-center w-100">
+                                <span>📂 Memorías</span>
+                                <i class="bi bi-chevron-double-down"></i>
+                            </div>
+                        </h2>
+                        <div id="collapseMemorias" class="accordion-collapse collapse" data-bs-parent="#accionesAccordion">
+                            <div class="accordion-body text-center">
+                                <a href="{% url 'memorias_participante' evento.id %}" class="btn btn-outline-success w-50">
+                                <i class="bi bi-folder-fill me-1"></i> Ir a Memorías
+                                </a>
+                                <p class="mt-2 text-muted small">Conoce las memorias del evento.</p>
+                            </div>
                         </div>
+                    </div>
+
+
+                    <!-- Calificación -->
+                    <div class="accordion-item p-3">
+                        <h2 class="accordion-header collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCalificacion">
+                            <div class="d-flex justify-content-between align-items-center w-100">
+                                <span>📊 Calificación</span>
+                                <i class="bi bi-chevron-double-down"></i>
+                            </div>
+                        </h2>
+                        <div id="collapseCalificacion" class="accordion-collapse collapse" data-bs-parent="#accionesAccordion">
+                            <div class="accordion-body text-center">
+                                {% if calificaciones_registradas|dict_get:evento.id %}
+                                <a href="{% url 'ver_calificaciones_par' evento.id %}" class="btn btn-outline-success w-50">
+                                    <i class="bi bi-bar-chart-line-fill mx-2"></i> Ver Mi Calificación
+                                </a>
+                                {% else %}
+                                    <button class="btn btn-secondary w-50" disabled><i class="bi bi-bar-chart-line-fill mx-2"></i>Sin Calificación</button>
+                                {% endif %}
+                                <p class="mt-2 text-muted small">Conoce tu calificación actual</p>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="text-start m-4 row row-cols-1 row-cols-sm-2 row-cols-md-3 g-2">
+                        
+                        
+
+                        
+                       
                         <div class="col">
-                            {% if calificaciones_registradas|dict_get:evento.id %}
-                                <a href="{% url 'ver_calificaciones_par' evento.id %}" class="btn btn-info w-100">Ver Mi Calificación</a>
-                            {% else %}
-                                <button class="btn btn-secondary w-100" disabled>Sin Calificación</button>
-                            {% endif %}
+                            
                         </div>
                     </div>
                 </div>

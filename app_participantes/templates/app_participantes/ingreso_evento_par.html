@@ -6,12 +6,12 @@
 {% block content %}
 
 <div class="container mt-5 mb-5">
-    <h2 class="contenedor text-center mb-5">ACCESO AL EVENTO</h2>
+    <h2 class="contenedor text-center mb-5">Acceso al evento {{ evento.eve_nombre|title }}</h2>
 
     <div class="row justify-content-center">
         <!-- CLAVE DE ACCESO -->
         <div class="col-md-4 d-flex align-items-stretch">
-            <div class="card w-100 text-center shadow-sm p-5 mb-5">
+            <div class="caja-mv w-100 text-center shadow-sm p-5 mb-5">
                 {% if participante.par_eve_clave %}
                     <h5 class="mb-3">Clave de acceso:</h5>
                     <p class="border rounded p-4 bg-light fs-4">
@@ -26,7 +26,7 @@
 
         <!-- QR DE ACCESO -->
         <div class="col-md-4 d-flex align-items-stretch">
-            <div class="card w-100 text-center shadow-sm p-5 mb-5">
+            <div class="caja-mv w-100 text-center shadow-sm p-5 mb-5">
                 {% if participante.par_eve_qr %}
                     <h5 class="mb-3">QR de acceso:</h5>
                     <img src="{{ participante.par_eve_qr.url }}" alt="QR acceso {{ evento.eve_nombre }}" class="img-fluid rounded mb-3" style="max-width: 200px; height: auto; margin: auto;">
@@ -39,7 +39,7 @@
     </div>
 
     <div class="text-start mt-5">
-        <a href="{% url 'dashboard_participante' %}" class="btn btn-secondary">Volver a la página principal</a>
+        <a href="{% url 'dashboard_participante' %}" class="btn btn-secondary">Volver al Inicio</a>
     </div>
 </div>
 
