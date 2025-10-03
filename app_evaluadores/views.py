@@ -26,6 +26,7 @@ from django.db import models
 from django.db.models import Q, Sum
 from django.contrib.auth.decorators import login_required
 from app_admin_eventos.models import Evento, MemoriaEvento
+from django.conf import settings
 
 
 
@@ -39,7 +40,7 @@ class DashboardEvaluadorView(View):
             return redirect('login_view')
 
         try:
-            evaluador = Evaluador.objects.get(eva_id=evaluador_id)
+            evaluador = Evaluador.objects.get(id=evaluador_id)
         except Evaluador.DoesNotExist:
             messages.error(request, "Evaluador no encontrado.")
             return redirect('login_view')
@@ -153,7 +154,7 @@ class EvaluadorCreateView(View):
         form = EvaluadorForm(request.POST, request.FILES)
 
         if form.is_valid():
-            eva_id = form.cleaned_data['eva_id']
+            id = form.cleaned_data['id']
             username = form.cleaned_data['username']
             first_name = form.cleaned_data['first_name']
             last_name = form.cleaned_data['last_name']
@@ -179,7 +180,7 @@ class EvaluadorCreateView(View):
             )
 
             evaluador = Evaluador.objects.create(
-                eva_id=eva_id,
+                id=id,
                 usuario=usuario
             )
 
@@ -205,7 +206,7 @@ class EvaluadorCreateView(View):
                             f"Recomendamos cambiar tu contraseña después de iniciar sesión.\n\n"
                             f"Atentamente,\nEquipo Event-Soft"
                         ),
-                        from_email="no-reply@Event-Soft.com",
+                        from_email=settings.DEFAULT_FROM_EMAIL,
                         recipient_list=[usuario.email],
                         fail_silently=False
                     )
@@ -237,7 +238,7 @@ class EditarEvaluadorView(View):
     template_name = 'editar_evaluador.html'
 
     def get(self, request, evaluador_id):
-        evaluador = get_object_or_404(Evaluador, eva_id=evaluador_id)
+        evaluador = get_object_or_404(Evaluador, id=evaluador_id)
         usuario = evaluador.usuario
         form = EditarUsuarioEvaluadorForm(instance=usuario)
 
@@ -252,7 +253,7 @@ class EditarEvaluadorView(View):
         })
 
     def post(self, request, evaluador_id):
-        evaluador = get_object_or_404(Evaluador, eva_id=evaluador_id)
+        evaluador = get_object_or_404(Evaluador, id=evaluador_id)
         usuario = evaluador.usuario
         relacion = EvaluadorEvento.objects.filter(eva_eve_evaluador_fk=evaluador).first()
 
@@ -350,7 +351,7 @@ class EventoDetailView(DetailView):
         
         # Verificar si el evaluador está asignado a este evento
         if evaluador_id:
-            evaluador = get_object_or_404(Evaluador, eva_id=evaluador_id)
+            evaluador = get_object_or_404(Evaluador, id=evaluador_id)
             if not EvaluadorEvento.objects.filter(eva_eve_evaluador_fk=evaluador, eva_eve_evento_fk=evento).exists():
                 messages.error(self.request, "No tienes permiso para ver este evento.")
                 return redirect('pagina_principal')
@@ -514,7 +515,7 @@ class CalificarParticipantesView(View):
     template_name = 'ver_lista_participantes.html'
 
     def get(self, request, evento_id):
-        evaluador = get_object_or_404(Evaluador, eva_id=request.session['evaluador_id'])
+        evaluador = get_object_or_404(Evaluador, id=request.session['evaluador_id'])
         evento = get_object_or_404(Evento, pk=evento_id)
 
         # Obtener los criterios del evento (para luego filtrar calificaciones)
@@ -717,7 +718,7 @@ def obtener_info_grupo_participante(participante, evento):
 class VerPodioParticipantesView(View):
     def get(self, request, evento_id):
         evento = get_object_or_404(Evento, pk=evento_id)
-        evaluador = get_object_or_404(Evaluador, eva_id=request.session['evaluador_id'])
+        evaluador = get_object_or_404(Evaluador, id=request.session['evaluador_id'])
 
         participantes_evento = ParticipanteEvento.objects.filter(
             par_eve_evento_fk=evento_id,
@@ -727,7 +728,7 @@ class VerPodioParticipantesView(View):
         participantes_calificados = []
         for pe in participantes_evento:
             participante = pe.par_eve_participante_fk
-            if participante and participante.par_id:
+            if participante and participante.id:
                 pe.participante = participante
 
                 # Extraer primer nombre y apellido
@@ -760,7 +761,7 @@ class DetalleCalificacionView(DetailView):
     model = Participante
 
     def get_object(self):
-        return get_object_or_404(Participante, par_id=self.kwargs['participante_id'])
+        return get_object_or_404(Participante, id=self.kwargs['participante_id'])
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -793,7 +794,7 @@ class DetalleCalificacionView(DetailView):
 @method_decorator(evaluador_required, name='dispatch')
 class EliminarEvaluadorView(View):
     def get(self, request, evaluador_id):
-        evaluador = get_object_or_404(Evaluador, eva_id=evaluador_id)
+        evaluador = get_object_or_404(Evaluador, id=evaluador_id)
         usuario = evaluador.usuario
 
         # Obtener el evento asignado, si lo hay
@@ -852,13 +853,13 @@ class ListadoParticipantesPorEventoView(View):
             participantes_evento = participantes_evento.filter(
                 Q(par_eve_participante_fk__usuario__first_name__icontains=query) |
                 Q(par_eve_participante_fk__usuario__last_name__icontains=query) |
-                Q(par_eve_participante_fk__par_id__icontains=query)
+                Q(par_eve_participante_fk__id__icontains=query)
             )
 
         participantes = []
         for p in participantes_evento:
             participantes.append({
-                'cedula': p.par_eve_participante_fk.par_id,
+                'cedula': p.par_eve_participante_fk.id,
                 'nombre': p.par_eve_participante_fk.usuario.first_name,
                 'apellido': p.par_eve_participante_fk.usuario.last_name,
                 'correo': p.par_eve_participante_fk.usuario.email,
@@ -925,7 +926,7 @@ class VerCriteriosEvaluadorView(View):
     def get(self, request, evento_id):
         evento = get_object_or_404(Evento, pk=evento_id)
         criterios = Criterio.objects.filter(cri_evento_fk=evento).order_by('cri_descripcion')
-        evaluador = get_object_or_404(Evaluador, eva_id=request.session['evaluador_id'])
+        evaluador = get_object_or_404(Evaluador, id=request.session['evaluador_id'])
 
         return render(request, self.template_name, {
             'evento': evento,

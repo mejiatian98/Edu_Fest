@@ -63,7 +63,6 @@ class MemoriaEvento(models.Model):
 
 
 
-
 class AsistenteEvento(models.Model):
     asi_eve_asistente_fk = models.ForeignKey('app_usuarios.Asistente', on_delete=models.CASCADE)
     asi_eve_evento_fk = models.ForeignKey(Evento, on_delete=models.CASCADE)
@@ -74,6 +73,8 @@ class AsistenteEvento(models.Model):
     asi_eve_clave = models.CharField(max_length=45)
     
 
+
+    
 
 class Calificacion(models.Model):
     cal_evaluador_fk = models.ForeignKey('app_usuarios.Evaluador', on_delete=models.CASCADE)
@@ -89,8 +90,6 @@ class EvaluadorEvento(models.Model):
     eva_eve_qr = models.ImageField(upload_to='upload/' , null=True, blank=True)
     eva_eve_clave = models.CharField(max_length=45 , null=True, blank=True)
     eva_eve_documento = models.FileField(upload_to='upload/' , null=True, blank=True)
-
-
 
 
 
@@ -163,7 +162,6 @@ class Usuario(AbstractUser):
 
 
 class Asistente(models.Model):
-    asi_id = models.IntegerField(primary_key=True)
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -171,7 +169,6 @@ class Asistente(models.Model):
 
 
 class Participante(models.Model):
-    par_id = models.IntegerField(primary_key=True)
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -179,7 +176,6 @@ class Participante(models.Model):
 
 
 class Evaluador(models.Model):
-    eva_id = models.IntegerField(primary_key=True)
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -187,8 +183,9 @@ class Evaluador(models.Model):
 
 
 class AdministradorEvento(models.Model):
-    adm_id = models.IntegerField(primary_key=True)
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Administrador de Evento"
+
+

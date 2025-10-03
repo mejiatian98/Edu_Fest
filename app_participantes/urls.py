@@ -8,7 +8,7 @@ urlpatterns = [
 
     path('preins/participante/<int:pk>', views.ParticipanteCreateView.as_view(), name='crear_participante'),
 
-    path('editar_preinscripcion/<int:par_id>/', views.EditarPreinscripcionView.as_view(),name='editar_preinscripcion'), 
+    path('editar_preinscripcion/<int:id>/', views.EditarPreinscripcionView.as_view(),name='editar_preinscripcion'), 
     path('participante/eliminar/<int:participante_id>/', views.EliminarParticipanteView.as_view(), name='eliminar_participante'),
     path('cambiar_password/participante/', views.CambioPasswordParticipanteView.as_view(), name='cambio_password_participante'),
 

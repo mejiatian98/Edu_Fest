@@ -26,10 +26,10 @@
                     </div>
                     <hr>
 
-                    <p class="card-text cedula"><strong>Cédula:</strong> {{ participante.par_id }}</p>
+                    <p class="card-text cedula"><strong>Cédula:</strong> {{ participante.id }}</p>
                     <p class="card-text"><strong>Correo:</strong> {{ participante.usuario.email }}</p>
                     <div class="text-center">
-                        <a href="{% url 'calificando_participante' participante.par_id evento.id %}" class="btn btn-success w-100 mt-2">
+                        <a href="{% url 'calificando_participante' participante.id evento.id %}" class="btn btn-success w-100 mt-2">
                             Evaluar
                         </a>
                     </div>

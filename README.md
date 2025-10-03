@@ -40,3 +40,15 @@ Desarrollo123
 19-06-2025
 
 -Modificaciones para el dashboard del participante y el login para el asistente. ❌: Sin corregir 
+
+
+
+
+
+
+
+Añadir y corregir
+El evaluador cuando es aceptado o rechazado deja mostrar el evento lo cual se debe corregir 
+Arreglar la clave de acceso que envia el super admin al administrador (HU88)
+Añadir la historia de usuario de las notificaciones del administrador para que pueda enviar a los participantes, asistentes y evaluadores (HU70,HU71,HU72)
+

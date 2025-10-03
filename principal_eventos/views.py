@@ -64,7 +64,7 @@ def login_view(request):
 
                 # ADMIN
                 if hasattr(user, 'administradorevento'):
-                    request.session['admin_id'] = user.administradorevento.adm_id
+                    request.session['admin_id'] = user.administradorevento.id
                     request.session['admin_nombre'] = user.username
                     if primer_acceso:
                         return redirect('cambio_password_admin')
@@ -73,7 +73,7 @@ def login_view(request):
 
                 # EVALUADOR
                 elif hasattr(user, 'evaluador'):
-                    request.session['evaluador_id'] = user.evaluador.eva_id
+                    request.session['evaluador_id'] = user.evaluador.id
                     request.session['evaluador_nombre'] = user.username
                     if primer_acceso:
                         return redirect('cambio_password_evaluador')
@@ -81,7 +81,7 @@ def login_view(request):
 
                 # PARTICIPANTE
                 elif hasattr(user, 'participante'):
-                    request.session['participante_id'] = user.participante.par_id
+                    request.session['participante_id'] = user.participante.id
                     request.session['participante_nombre'] = user.username
                     if primer_acceso:
                         return redirect('cambio_password_participante')
@@ -89,7 +89,7 @@ def login_view(request):
 
                 # ASISTENTE
                 elif hasattr(user, 'asistente'):
-                    request.session['asistente_id'] = user.asistente.asi_id
+                    request.session['asistente_id'] = user.asistente.id
                     request.session['asistente_nombre'] = user.username
                     if primer_acceso:
                         return redirect('cambio_password_asistente')

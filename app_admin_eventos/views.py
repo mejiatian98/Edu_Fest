@@ -109,16 +109,24 @@ class MenuPrincipalView(ListView):
     template_name = 'dashboard_principal_admin.html'
     context_object_name = 'eventos'
 
-    
-    #Iniciar sesion una vez y cambiar contraseña
-    def dispatch(self, request, *args, **kwargs):
-        admin_id = request.session.get('admin_id')
-        admin = get_object_or_404(AdministradorEvento, pk=admin_id)
+    def get_queryset(self):
+        # Obtener el administrador de evento logueado
+        admin_evento = get_object_or_404(AdministradorEvento, usuario=self.request.user)
 
-        if not admin.usuario.last_login:
+        # Filtrar eventos de este administrador
+        return Evento.objects.filter(
+            eve_administrador_fk=admin_evento
+        ).order_by('eve_fecha_inicio')
+
+    # Forzar que el admin cambie su contraseña en el primer login
+    def dispatch(self, request, *args, **kwargs):
+        admin_evento = get_object_or_404(AdministradorEvento, usuario=request.user)
+
+        if not admin_evento.usuario.last_login:
             return redirect('cambio_password_admin')
 
         return super().dispatch(request, *args, **kwargs)
+
 
 
 
@@ -143,8 +151,8 @@ class CambioPasswordAdminView(View):
             messages.error(request, "❌ La contraseña debe tener al menos 6 caracteres.")
             return render(request, self.template_name)
 
-        admin_id = request.session.get('admin_id')
-        admin = get_object_or_404(AdministradorEvento, pk=admin_id)
+        id = request.session.get('id')
+        admin = get_object_or_404(AdministradorEvento, pk=id)
         usuario =admin.usuario
 
         usuario.set_password(password1)
@@ -162,7 +170,7 @@ class EditarAdministradorView(View):
     template_name = 'editar_administrador.html'
 
     def get(self, request, administrador_id):
-        administrador = get_object_or_404(AdministradorEvento, adm_id=administrador_id)
+        administrador = get_object_or_404(AdministradorEvento, usuario=self.request.user)
         usuario = administrador.usuario
         form = EditarUsuarioAdministradorForm(instance=usuario)
         relacion = Evento.objects.filter(eve_administrador_fk=administrador).first()
@@ -175,7 +183,7 @@ class EditarAdministradorView(View):
         })
 
     def post(self, request, administrador_id):
-        administrador = get_object_or_404(AdministradorEvento, adm_id=administrador_id)
+        administrador = get_object_or_404(AdministradorEvento, usuario=self.request.user)
         usuario = administrador.usuario
         relacion = Evento.objects.filter(eve_administrador_fk=administrador).first()
 
@@ -260,6 +268,8 @@ class EditarAdministradorView(View):
 
 #############################--- Crear Evento ---##############################
 
+
+
 @method_decorator(admin_required, name='dispatch')
 class EventoCreateView(CreateView):
     model = Evento
@@ -269,13 +279,14 @@ class EventoCreateView(CreateView):
 
     def form_valid(self, form):
         evento = form.save(commit=False)
-        admin_id = self.request.session.get('admin_id')
-        administrador = AdministradorEvento.objects.get(pk=admin_id)
+
+        # ✅ Obtener administrador desde el usuario logueado
+        administrador = get_object_or_404(AdministradorEvento, usuario=self.request.user)
         evento.eve_administrador_fk = administrador
         evento.save()
 
-        # Guardar categorías
-        categorias = form.cleaned_data['categorias']
+        # ✅ Guardar categorías seleccionadas
+        categorias = form.cleaned_data.get('categorias', [])
         for categoria in categorias:
             EventoCategoria.objects.create(
                 eve_cat_evento_fk=evento,
@@ -285,11 +296,13 @@ class EventoCreateView(CreateView):
         # ✅ Enviar notificación por correo al superadmin
         send_mail(
             subject=f'Nuevo evento creado: {evento.eve_nombre}',
-            message=f'El Administrador "{administrador.usuario.first_name}" ha creado el evento "{evento.eve_nombre}".',
-            from_email=DEFAULT_FROM_EMAIL,
-            recipient_list=['halosniper1963@gmail.com'],  # O usa settings.SUPERADMIN_EMAIL
+            message=f'El Administrador "{administrador.usuario.first_name} {administrador.usuario.last_name}" '
+                    f'ha creado el evento "{evento.eve_nombre}".',
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=['halosniper1963@gmail.com'],  # o settings.SUPERADMIN_EMAIL si lo defines en .env
         )
 
+        # ✅ Mensaje de éxito
         messages.success(self.request, "Se ha creado el evento exitosamente")
         return super().form_valid(form)
 
@@ -611,7 +624,7 @@ class ValidacionParticipanteView(View):
 
         if query:
             participantes_evento = participantes_evento.filter(
-                Q(par_eve_participante_fk__par_id__icontains=query) |
+                Q(par_eve_participante_fk__id__icontains=query) |
                 Q(par_eve_participante_fk__usuario__last_name__icontains=query) |
                 Q(par_eve_participante_fk__usuario__first_name__icontains=query)
             )
@@ -630,13 +643,13 @@ class ValidacionParticipanteView(View):
                 for miembro in todos_miembros:
                     miembros_info.append({
                         'nombre': f"{miembro.par_eve_participante_fk.usuario.first_name} {miembro.par_eve_participante_fk.usuario.last_name}",
-                        'cedula': miembro.par_eve_participante_fk.par_id,
+                        'cedula': miembro.par_eve_participante_fk.id,
                         'es_lider': miembro.par_eve_proyecto_principal is None
                     })
 
             data.append({
                 'id': par.id,
-                'cedula': participante.par_id,
+                'cedula': participante.id,
                 'nombre': participante.usuario.first_name,
                 'apellido': participante.usuario.last_name,
                 'correo': participante.usuario.email,
@@ -690,7 +703,7 @@ class AprobarParticipanteView(View):
                 # Guardar QR en memoria como archivo
                 buffer = BytesIO()
                 qr_img.save(buffer, format='PNG')
-                file_name = f"qr_grupo_{participante_evento.par_eve_codigo_proyecto}_{miembro_participante.par_id}.png"
+                file_name = f"qr_grupo_{participante_evento.par_eve_codigo_proyecto}_{miembro_participante.id}.png"
                 miembro_pe.par_eve_qr.save(file_name, ContentFile(buffer.getvalue()), save=False)
 
                 # Guardar en base de datos
@@ -762,7 +775,7 @@ class AprobarParticipanteView(View):
             # Guardar QR en memoria como archivo
             buffer = BytesIO()
             qr_img.save(buffer, format='PNG')
-            file_name = f"qr_participante_{participante.par_id}.png"
+            file_name = f"qr_participante_{participante.id}.png"
             participante_evento.par_eve_qr.save(file_name, ContentFile(buffer.getvalue()), save=False)
 
             # Guardar en base de datos
@@ -930,7 +943,7 @@ class ValidacionAsistentesView(View):
         # Filtro por cédula o nombre
         if query:
             asistentes_evento = asistentes_evento.filter(
-                Q(asi_eve_asistente_fk__par_id__icontains=query) |
+                Q(asi_eve_asistente_fk__id__icontains=query) |
                 Q(asi_eve_asistente_fk__asuario_first_name__icontains=query) |
                 Q(asi_eve_asistente_fk__asuario_last_name__icontains=query)
             )
@@ -945,7 +958,7 @@ class ValidacionAsistentesView(View):
             asistente = asi.asi_eve_asistente_fk
             data.append({
                 'id': asi.id,
-                'cedula': asistente.asi_id,
+                'cedula': asistente.id,
                 'nombre': asistente.usuario.first_name,
                 'apellido': asistente.usuario.last_name,
                 'correo': asistente.usuario.email,
@@ -987,7 +1000,7 @@ class AprobarAsistenteView(View):
         qr_img = qrcode.make(qr_data)
         buffer = BytesIO()
         qr_img.save(buffer, format='PNG')
-        file_name = f"qr_asistente_{asistente.asi_id}.png"
+        file_name = f"qr_asistente_{asistente.id}.png"
         asistente_evento.asi_eve_qr.save(file_name, ContentFile(buffer.getvalue()), save=False)
 
         # Guardar evento y relación
@@ -1267,8 +1280,8 @@ class CriterioAgregadosListView(ListView):
 class VerPodioParticipantesAdminView(View):
     def get(self, request, evento_id):
         
-        admin_id = self.request.session.get('admin_id')
-        administrador = get_object_or_404(AdministradorEvento, pk=admin_id)
+        id = self.request.session.get('id')
+        administrador = get_object_or_404(AdministradorEvento, pk=id)
         
         # Obtener el evento correspondiente
         evento = get_object_or_404(Evento, pk=evento_id)
@@ -1303,7 +1316,7 @@ class DetalleCalificacionAdminView(DetailView):
     model = Participante
 
     def get_object(self):
-        return get_object_or_404(Participante, par_id=self.kwargs['participante_id'])
+        return get_object_or_404(Participante, id=self.kwargs['participante_id'])
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -1312,8 +1325,8 @@ class DetalleCalificacionAdminView(DetailView):
         evento = get_object_or_404(Evento, id=evento_id)
 
         # Verificamos que el administrador logueado sea el encargado de este evento
-        admin_id = self.request.session.get('admin_id')
-        administrador = get_object_or_404(AdministradorEvento, pk=admin_id)
+        id = self.request.session.get('id')
+        administrador = get_object_or_404(AdministradorEvento, pk=id)
         
         if evento.eve_administrador_fk != administrador:
             return redirect('acceso_denegado')
@@ -1356,7 +1369,7 @@ class ValidacionEvaluadorView(View):
 
         if query:
             evaluadores_evento = evaluadores_evento.filter(
-                Q(eva_eve_evaluador_fk__eva_id__icontains=query) |
+                Q(eva_eve_evaluador_fk__id__icontains=query) |
                 Q(eva_eve_evaluador_fk__usuario__first_name__icontains=query) |
                 Q(eva_eve_evaluador_fk__usuario__last_name__icontains=query)
             )
@@ -1371,7 +1384,7 @@ class ValidacionEvaluadorView(View):
             evaluador = eva.eva_eve_evaluador_fk
             data.append({
             'id': eva.id,
-            'cedula': evaluador.eva_id,
+            'cedula': evaluador.id,
             'nombre': evaluador.usuario.first_name,
             'apellido': evaluador.usuario.last_name,
             'correo': evaluador.usuario.email,
@@ -1407,7 +1420,7 @@ class AprobarEvaluadorView(View):
 
         buffer = BytesIO()
         qr_img.save(buffer, format='PNG')
-        file_name = f"qr_evaluador_{evaluador.eva_id}.png"
+        file_name = f"qr_evaluador_{evaluador.id}.png"
         evaluador_evento.eva_eve_qr.save(file_name, ContentFile(buffer.getvalue()), save=False)
 
         evaluador_evento.save()

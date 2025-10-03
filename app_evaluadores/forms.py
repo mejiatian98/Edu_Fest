@@ -2,7 +2,7 @@ from django import forms
 from app_usuarios.models import Usuario, Evaluador
 
 class EvaluadorForm(forms.ModelForm):
-    eva_id = forms.CharField(
+    id = forms.CharField(
         widget=forms.TextInput(attrs={
             'class': 'form-control',
             'placeholder': 'Ingrese su cédula',
@@ -47,13 +47,13 @@ class EvaluadorForm(forms.ModelForm):
         model = Usuario
         fields = ['username', 'first_name', 'last_name', 'email', 'telefono']
 
-    def clean_eva_id(self):
-        eva_id = self.cleaned_data['eva_id']
-        if not eva_id.isdigit():
+    def clean_id(self):
+        id = self.cleaned_data['id']
+        if not id.isdigit():
             raise forms.ValidationError("La cédula debe contener solo números.")
-        if Evaluador.objects.filter(eva_id=eva_id).exists():
+        if Evaluador.objects.filter(id=id).exists():
             raise forms.ValidationError("Esta cédula ya está registrada.")
-        return eva_id
+        return id
 
     def clean_email(self):
         email = self.cleaned_data['email']

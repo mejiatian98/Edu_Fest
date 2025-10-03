@@ -19,7 +19,6 @@ class Usuario(AbstractUser):
 
 
 class Asistente(models.Model):
-    asi_id = models.IntegerField(primary_key=True)
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -27,7 +26,6 @@ class Asistente(models.Model):
 
 
 class Participante(models.Model):
-    par_id = models.IntegerField(primary_key=True)
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -35,7 +33,6 @@ class Participante(models.Model):
 
 
 class Evaluador(models.Model):
-    eva_id = models.IntegerField(primary_key=True)
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
 
     def __str__(self):
@@ -43,7 +40,6 @@ class Evaluador(models.Model):
 
 
 class AdministradorEvento(models.Model):
-    adm_id = models.IntegerField(primary_key=True)
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
 
     def __str__(self):

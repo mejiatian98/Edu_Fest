@@ -12,7 +12,7 @@
 
         <div class="mb-3">
             <label class="form-label">Cédula:</label>
-            <input type="text" class="form-control" value="{{ asistente.asi_id }}" disabled>
+            <input type="text" class="form-control" value="{{ asistente.id }}" disabled>
         </div>
 
         <div class="mb-3">
@@ -81,7 +81,7 @@
     <hr class ="mt-5">
 
         <div class ="text-center m-4"  >
-            <a href="{% url 'eliminar_asistente' asistente.asi_id %}" 
+            <a href="{% url 'eliminar_asistente' asistente.id %}" 
             class="btn btn-danger btn-sm"
             onclick="return confirm('¿Estás seguro de que deseas eliminar este evaluador? Esta acción no se puede deshacer.');">
                 Eliminar mis datos

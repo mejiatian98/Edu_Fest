@@ -51,7 +51,7 @@
                             <h5 class="fw-bold text-dark mb-1">
                                 {{ participante.usuario.first_name }} {{ participante.usuario.last_name }}
                             </h5>
-                            <p class="text-muted mb-0">CC: {{ participante.par_id }}</p>
+                            <p class="text-muted mb-0">CC: {{ participante.id }}</p>
                             {% if es_grupo %}
                                 <span class="badge bg-warning text-dark mt-2">
                                     <i class="fas fa-code me-1"></i>{{ codigo_proyecto }}
@@ -82,7 +82,7 @@
                                                         {{ miembro.par_eve_participante_fk.usuario.first_name }} {{ miembro.par_eve_participante_fk.usuario.last_name }}
                                                     </div>
                                                     <div class="text-muted text-xs">
-                                                        CC: {{ miembro.par_eve_participante_fk.par_id }}
+                                                        CC: {{ miembro.par_eve_participante_fk.id }}
                                                     </div>
                                                 </div>
                                             </div>

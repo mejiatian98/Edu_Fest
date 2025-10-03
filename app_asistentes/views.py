@@ -62,7 +62,7 @@ class DashboardAsistenteView(View):
             return redirect('login_view')
 
         try:
-            asistente = Asistente.objects.get(asi_id=asistente_id)
+            asistente = Asistente.objects.get(id=asistente_id)
         except Asistente.DoesNotExist:
             messages.error(request, "Asistente no encontrado.")
             return redirect('login_view')
@@ -114,7 +114,7 @@ class AsistenteCreateView(View):
             })
 
         if form.is_valid():
-            asi_id = form.cleaned_data['asi_id']
+            id = form.cleaned_data['id']
             first_name = form.cleaned_data['first_name']
             last_name = form.cleaned_data['last_name']
             email = form.cleaned_data['email']
@@ -144,7 +144,7 @@ class AsistenteCreateView(View):
 
             asistente = Asistente.objects.create(
                 usuario=usuario,
-                asi_id=asi_id
+                id=id
             )
 
             documento_pago = request.FILES.get('asi_eve_soporte') if es_de_pago else None
@@ -162,7 +162,7 @@ class AsistenteCreateView(View):
                 buffer = BytesIO()
                 qr.save(buffer, format='PNG')
                 qr_bytes = buffer.getvalue()
-                qr_filename = f"qr_{asi_id}.png"
+                qr_filename = f"qr_{id}.png"
                 qr_img_file = ContentFile(qr_bytes, name=qr_filename)
 
             AsistenteEvento.objects.create(
@@ -252,7 +252,7 @@ class CambioPasswordAsistenteView(View):
 @method_decorator(asistente_required, name='dispatch')
 class EliminarAsistenteView(View):
     def get(self, request, asistente_id):
-        asistente = get_object_or_404(Asistente, asi_id=asistente_id)
+        asistente = get_object_or_404(Asistente, id=asistente_id)
         usuario = asistente.usuario
 
         # Obtener el evento asignado, si lo hay
@@ -291,8 +291,8 @@ class EliminarAsistenteView(View):
 class EditarPreinscripcionAsistenteView(View):
     template_name = 'editar_preinscripcion_asistente.html'
 
-    def get(self, request, asi_id):
-        relacion = get_object_or_404(AsistenteEvento, pk=asi_id)
+    def get(self, request, id):
+        relacion = get_object_or_404(AsistenteEvento, pk=id)
         asistente = relacion.asi_eve_asistente_fk
         evento = relacion.asi_eve_evento_fk
         form = EditarUsuarioAsistenteForm(instance=asistente.usuario)
@@ -305,8 +305,8 @@ class EditarPreinscripcionAsistenteView(View):
             'asistente': asistente
         })
 
-    def post(self, request, asi_id):
-        relacion = get_object_or_404(AsistenteEvento, pk=asi_id)
+    def post(self, request, id):
+        relacion = get_object_or_404(AsistenteEvento, pk=id)
         asistente = relacion.asi_eve_asistente_fk
         evento = relacion.asi_eve_evento_fk
         usuario = asistente.usuario
@@ -327,15 +327,15 @@ class EditarPreinscripcionAsistenteView(View):
             if contrasena_actual or nueva_contrasena or confirmar_nueva:
                 if not usuario.check_password(contrasena_actual):
                     messages.error(request, "La contraseña actual no es correcta.")
-                    return redirect('editar_preinscripcion_asistente', asi_id=asi_id)
+                    return redirect('editar_preinscripcion_asistente', id=id)
 
                 if nueva_contrasena != confirmar_nueva:
                     messages.error(request, "Las contraseñas nuevas no coinciden.")
-                    return redirect('editar_preinscripcion_asistente', asi_id=asi_id)
+                    return redirect('editar_preinscripcion_asistente', id=id)
 
                 if len(nueva_contrasena) < 6:
                     messages.error(request, "La nueva contraseña debe tener al menos 6 caracteres.")
-                    return redirect('editar_preinscripcion_asistente', asi_id=asi_id)
+                    return redirect('editar_preinscripcion_asistente', id=id)
 
                 usuario.set_password(nueva_contrasena)
                 update_session_auth_hash(request, usuario)
@@ -347,7 +347,7 @@ class EditarPreinscripcionAsistenteView(View):
                 relacion.save()
 
             messages.success(request, "Tu información fue actualizada correctamente.")
-            return redirect('editar_preinscripcion_asistente', asi_id=asi_id)
+            return redirect('editar_preinscripcion_asistente', id=id)
 
         return render(request, self.template_name, {
             'form': form,
@@ -374,7 +374,7 @@ class EventoDetailView(DetailView):
         
         # Verificar si el asistente está asignado a este evento
         if asistente_id:
-            asistente = get_object_or_404(Asistente, asi_id=asistente_id)
+            asistente = get_object_or_404(Asistente, id=asistente_id)
             if not AsistenteEvento.objects.filter(asi_eve_asistente_fk=asistente, asi_eve_evento_fk=evento).exists():
                 messages.error(self.request, "No tienes permiso para ver este evento.")
                 return redirect('pagina_principal')

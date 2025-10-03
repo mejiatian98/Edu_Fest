@@ -36,7 +36,7 @@
                             <td>{{ participante.par_eve_participante_fk.usuario.first_name }} {{ participante.par_eve_participante_fk.usuario.last_name }}</td>
                             <td>{{ participante.calificacion }}</td>
                             <td class="text-center">
-                                <a href="{% url 'ver_detalle_calificacion_admin' evento.id participante.par_eve_participante_fk.par_id %}" class="btn btn-success">
+                                <a href="{% url 'ver_detalle_calificacion_admin' evento.id participante.par_eve_participante_fk.id %}" class="btn btn-success">
                                     Ver detalle
                                 </a>
                             </td>

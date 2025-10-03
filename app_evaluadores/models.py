@@ -19,3 +19,5 @@ class EvaluadorEvento(models.Model):
     eva_eve_qr = models.ImageField(upload_to='upload/' , null=True, blank=True)
     eva_eve_clave = models.CharField(max_length=45 , null=True, blank=True)
     eva_eve_documento = models.FileField(upload_to='upload/' , null=True, blank=True)
+
+

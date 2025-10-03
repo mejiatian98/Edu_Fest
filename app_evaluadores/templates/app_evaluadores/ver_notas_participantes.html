@@ -37,8 +37,8 @@
 
                             <td>{{ participante.calificacion }}</td>
                             <td>
-                                {% if participante.participante.par_id %}
-                                    <a href="{% url 'ver_detalle_calificacion' evento.id participante.participante.par_id %}">
+                                {% if participante.participante.id %}
+                                    <a href="{% url 'ver_detalle_calificacion' evento.id participante.participante.id %}">
                                         Ver detalle
                                     </a>
                                 {% else %}

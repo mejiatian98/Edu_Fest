@@ -5,14 +5,14 @@ from app_usuarios.models import Usuario, Participante
 from .models import ParticipanteEvento
 
 class ParticipanteForm(forms.ModelForm):
-    par_id = forms.IntegerField(
+    id = forms.IntegerField(
         label="Cédula",
         widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ingresa tu número de cédula'})
     )
     
     class Meta:
         model = Usuario
-        fields = ['par_id', 'username', 'email', 'telefono', 'first_name', 'last_name']
+        fields = ['id', 'username', 'email', 'telefono', 'first_name', 'last_name']
         widgets = {
             'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'}),
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@email.com'}),
@@ -26,23 +26,23 @@ class ParticipanteForm(forms.ModelForm):
         self.evento = kwargs.pop('evento', None)
         super().__init__(*args, **kwargs)
 
-    def clean_par_id(self):
-        par_id = self.cleaned_data['par_id']
+    def clean_id(self):
+        id = self.cleaned_data['id']
         
         # Solo validar si hay un evento específico
         if self.evento:
             # Verificar si ya está registrado en este evento específico
-            participante_existente = Participante.objects.filter(par_id=par_id).first()
+            participante_existente = Participante.objects.filter(id=id).first()
             if participante_existente:
                 if ParticipanteEvento.objects.filter(
                     par_eve_participante_fk=participante_existente,
                     par_eve_evento_fk=self.evento
                 ).exists():
                     raise forms.ValidationError(
-                        f"Ya existe un participante con la cédula {par_id} registrado para este evento."
+                        f"Ya existe un participante con la cédula {id} registrado para este evento."
                     )
         
-        return par_id
+        return id
 
     def clean_username(self):
         username = self.cleaned_data['username']
@@ -50,9 +50,9 @@ class ParticipanteForm(forms.ModelForm):
         # Solo validar username para nuevos usuarios
         if self.evento:
             # Verificar si existe un participante con la cédula del formulario
-            par_id = self.cleaned_data.get('par_id')
-            if par_id:
-                participante_existente = Participante.objects.filter(par_id=par_id).first()
+            id = self.cleaned_data.get('id')
+            if id:
+                participante_existente = Participante.objects.filter(id=id).first()
                 if participante_existente:
                     # Si el participante existe, no validar username
                     return username
@@ -69,9 +69,9 @@ class ParticipanteForm(forms.ModelForm):
         # Solo validar email para nuevos usuarios
         if self.evento:
             # Verificar si existe un participante con la cédula del formulario
-            par_id = self.cleaned_data.get('par_id')
-            if par_id:
-                participante_existente = Participante.objects.filter(par_id=par_id).first()
+            id = self.cleaned_data.get('id')
+            if id:
+                participante_existente = Participante.objects.filter(id=id).first()
                 if participante_existente:
                     # Si el participante existe, no validar email
                     return email

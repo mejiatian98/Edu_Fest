@@ -80,12 +80,21 @@
         </section>
 
 
+        <div class="text-center contenedor-mv p-4 mb-4">
+            <div class="col mb-3">
+                <a href="{% url 'crear_categoria_area' %}" class="btn btn-success w-100">Crear Área y Categoría</a>
+            </div>
+        </div>
+
+
 
         {% if eventos|length == 0 %}
             <div class="alert alert-info text-center contenedor-mv " role="alert">
                 No tienes eventos creados. Por favor, crea un evento para comenzar a gestionarlo.
             </div>
         {% endif %}
+
+        
 
 
         {% for evento in eventos %}
@@ -143,9 +152,7 @@
                     </div>
                     <div class="text-center">
                         
-                        <div class="col mb-3">
-                            <a href="{% url 'crear_categoria_area' %}" class="btn btn-success w-100">Crear Área y Categoría</a>
-                        </div>
+                        
                         <div class="col mb-3">
                             <a href="{% url 'editar_evento' evento.id %}" class="btn btn-primary w-100">Editar evento</a>
                         </div>

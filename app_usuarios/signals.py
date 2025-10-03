@@ -10,6 +10,6 @@ def crear_admin_evento(sender, instance, created, **kwargs):
         # Solo crea si no existe ya
         if not hasattr(instance, 'administradorevento'):
             AdministradorEvento.objects.create(
-                adm_id=instance.id,  # o usa un autoincrement si prefieres
+                id=instance.id,  # o usa un autoincrement si prefieres
                 usuario=instance
             )

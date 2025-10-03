@@ -63,17 +63,17 @@ class ParticipanteCreateView(View):
             try:
                 with transaction.atomic():
                     # Verificar si la cédula ya está registrada para ESTE evento específico
-                    par_id = form.cleaned_data['par_id']
+                    id = form.cleaned_data['id']
                     
                     # Verificar si ya existe un participante con esta cédula para este evento
-                    participante_existente = Participante.objects.filter(par_id=par_id).first()
+                    participante_existente = Participante.objects.filter(id=id).first()
                     if participante_existente:
                         # Verificar si ya está registrado en este evento específico
                         if ParticipanteEvento.objects.filter(
                             par_eve_participante_fk=participante_existente,
                             par_eve_evento_fk=evento
                         ).exists():
-                            messages.error(request, f"Ya existe un participante con la cédula {par_id} registrado para el evento '{evento.eve_nombre}'.")
+                            messages.error(request, f"Ya existe un participante con la cédula {id} registrado para el evento '{evento.eve_nombre}'.")
                             return render(request, 'crear_participante.html', {
                                 'form': form,
                                 'evento': evento,
@@ -121,7 +121,7 @@ class ParticipanteCreateView(View):
                         usuario.save()
 
                         # Crear el Participante líder
-                        participante_lider = Participante.objects.create(par_id=par_id, usuario=usuario)
+                        participante_lider = Participante.objects.create(id=id, usuario=usuario)
 
                     # Determinar si es grupo
                     es_grupo = request.POST.get('tipo_participacion') == 'grupo'
@@ -162,7 +162,7 @@ class ParticipanteCreateView(View):
 
                             if cedula and nombre_completo and email:
                                 # Verificar si la cédula del miembro ya está registrada para este evento
-                                miembro_existente = Participante.objects.filter(par_id=cedula).first()
+                                miembro_existente = Participante.objects.filter(id=cedula).first()
                                 if miembro_existente:
                                     if ParticipanteEvento.objects.filter(
                                         par_eve_participante_fk=miembro_existente,
@@ -228,7 +228,7 @@ class ParticipanteCreateView(View):
 
                                     # Crear participante miembro
                                     participante_miembro = Participante.objects.create(
-                                        par_id=cedula,
+                                        id=cedula,
                                         usuario=usuario_miembro
                                     )
 
@@ -338,7 +338,7 @@ class ParticipanteCreateView(View):
 @method_decorator(participante_required, name='dispatch')
 class EliminarParticipanteView(View):
     def get(self, request, participante_id):
-        participante = get_object_or_404(Participante, par_id=participante_id)
+        participante = get_object_or_404(Participante, id=participante_id)
         usuario = participante.usuario
 
         # Obtener el evento asignado, si lo hay
@@ -385,7 +385,7 @@ class EventoDetailView(DetailView):
         
         # Verificar si el participante está asignado a este evento
         if participante_id:
-            participante = get_object_or_404(Participante, par_id=participante_id)
+            participante = get_object_or_404(Participante, id=participante_id)
             if not ParticipanteEvento.objects.filter(par_eve_participante_fk=participante, par_eve_evento_fk=evento).exists():
                 messages.error(self.request, "No tienes permiso para ver este evento.")
                 return redirect('pagina_principal')
@@ -407,7 +407,7 @@ class DashboardParticipanteView(View):
             return redirect('login_view')
 
         try:
-            participante = Participante.objects.get(par_id=participante_id)
+            participante = Participante.objects.get(id=participante_id)
         except Participante.DoesNotExist:
             messages.error(request, "Participante no encontrado.")
             return redirect('login_view')
@@ -490,8 +490,8 @@ class CambioPasswordParticipanteView(View):
 class EditarPreinscripcionView(View):
     template_name = 'editar_preinscripcion_participante.html'
 
-    def get(self, request, par_id):
-        relacion = get_object_or_404(ParticipanteEvento, pk=par_id)
+    def get(self, request, id):
+        relacion = get_object_or_404(ParticipanteEvento, pk=id)
         participante = relacion.par_eve_participante_fk
         evento = relacion.par_eve_evento_fk
         form = EditarUsuarioParticipanteForm(instance=participante.usuario)
@@ -504,8 +504,8 @@ class EditarPreinscripcionView(View):
             'participante': participante
         })
 
-    def post(self, request, par_id):
-        relacion = get_object_or_404(ParticipanteEvento, pk=par_id)
+    def post(self, request, id):
+        relacion = get_object_or_404(ParticipanteEvento, pk=id)
         participante = relacion.par_eve_participante_fk
         evento = relacion.par_eve_evento_fk
         usuario = participante.usuario
@@ -526,13 +526,13 @@ class EditarPreinscripcionView(View):
             if contrasena_actual or nueva_contrasena or confirmar_nueva:
                 if not usuario.check_password(contrasena_actual):
                     messages.error(request, "La contraseña actual no es correcta.")
-                    return redirect('editar_preinscripcion', par_id=par_id)
+                    return redirect('editar_preinscripcion', id=id)
                 if nueva_contrasena != confirmar_nueva:
                     messages.error(request, "La nueva contraseña y su confirmación no coinciden.")
-                    return redirect('editar_preinscripcion', par_id=par_id)
+                    return redirect('editar_preinscripcion', id=id)
                 if len(nueva_contrasena) < 6:
                     messages.error(request, "La nueva contraseña debe tener al menos 6 caracteres.")
-                    return redirect('editar_preinscripcion', par_id=par_id)
+                    return redirect('editar_preinscripcion', id=id)
 
                 usuario.set_password(nueva_contrasena)
                 update_session_auth_hash(request, usuario)  # Mantiene sesión activa después del cambio
@@ -544,7 +544,7 @@ class EditarPreinscripcionView(View):
                 relacion.save()
 
             messages.success(request, "Tu información fue actualizada correctamente.")
-            return redirect('editar_preinscripcion', par_id=par_id)
+            return redirect('editar_preinscripcion', id=id)
 
         return render(request, self.template_name, {
             'form': form,
@@ -581,7 +581,7 @@ class VerCriteriosParticipanteView(View):
     def get(self, request, evento_id):
         evento = get_object_or_404(Evento, pk=evento_id)
         criterios = Criterio.objects.filter(cri_evento_fk=evento).order_by('cri_descripcion')
-        participante = get_object_or_404(Participante, par_id=request.session['participante_id'])
+        participante = get_object_or_404(Participante, id=request.session['participante_id'])
 
         return render(request, self.template_name, {
             'evento': evento,

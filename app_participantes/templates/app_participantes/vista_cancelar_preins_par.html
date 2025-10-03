@@ -36,7 +36,7 @@
                     <p><strong>Estado de preinscripción:</strong> {{ estado }}</p>
                 </div>
             </div>
-            <form method="POST" action="{% url 'cancelar_preinscripcion_par' participante.par_id %}" id="cancelar-form">
+            <form method="POST" action="{% url 'cancelar_preinscripcion_par' participante.id %}" id="cancelar-form">
                 {% csrf_token %}
                 <div class="text-center mt-4">
                     <button type="submit" class="btn btn-danger" onclick="return confirmarCancelacion()">Cancelar Evento</button>
