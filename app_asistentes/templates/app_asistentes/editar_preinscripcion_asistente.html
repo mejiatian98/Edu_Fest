@@ -22,26 +22,48 @@
 
         {{ form.as_p }}
 
+        <hr>
 
-        <div class="mb-3">
-            <label class="form-label">soporte de pago actual:</label><br>
-            {% if relacion.asi_eve_soporte %}
-                <a href="{{ relacion.asi_eve_soporte.url }}" target="_blank" class="btn btn-outline-primary">Ver documento</a>
-            {% else %}
-                <span class="text-muted">No cargado aún</span>
-            {% endif %}
+        <!-- mostrar todos los soportes de pago -->
+        <div class="mb-3 text-center">
+            <h4 class="form-label my-5">Soportes de pago</h4>
+            <ul class="list-group">
+                {% for r in todas_relaciones %}
+                    <li class="list-group-item d-flex justify-content-center align-items-center">
+                        <div>
+                            <div class="mb-5">
+                                <strong>Evento:</strong> {{ r.asi_eve_evento_fk.eve_nombre }}<br>
+                                <strong>Estado:</strong> {{ r.asi_eve_estado }}
+                            </div>
+
+                            {% if r.asi_eve_soporte %}
+                                <a href="{{ r.asi_eve_soporte.url }}" target="_blank" class="btn btn-outline-primary btn-sm mt-2">
+                                    Ver soporte
+                                </a>
+                                <div class="mt-2">
+                                    <img src="{{ r.asi_eve_soporte.url }}" alt="Soporte {{ r.asi_eve_evento_fk.eve_nombre }}" 
+                                        class="img-thumbnail" style="max-width: 200px;">
+                                </div>
+                            {% else %}
+                                <span class="text-muted">No cargado aún</span>
+                            {% endif %}
+                            
+                            <!-- Input solo visible si NO está aprobado -->
+                            {% if r.asi_eve_estado != "Aprobado" %}
+                                <div class="mb-3 mt-2">
+                                    <label class="form-label">Actualizar soporte de pago:</label>
+                                    <input type="file" name="asi_eve_soporte_{{ r.id }}" class="form-control" accept="image/*">
+                                </div>
+                            {% else %}
+                                <p class="text-success mt-3"><strong>✅ Ya aprobado, no es necesario editar el soporte de pago.</strong></p>
+                            {% endif %}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Actualizar soporte de pago:</label>
-            <input type="file" id="pdfInput" name="asi_eve_soporte" class="form-control" accept=".pdf">
-        </div>
 
-        <!-- Contenedor para previsualizar el PDF -->
-        <div id="pdfPreviewContainer" style="display:none; margin-top: 1rem;">
-            <label class="form-label">Vista previa del documento:</label>
-            <iframe id="pdfPreview" width="100%" height="400px" style="border: 1px solid #ccc;"></iframe>
-        </div>
 
         <div class="mb-3">
             <label class="form-label">Contraseña Antigua</label>

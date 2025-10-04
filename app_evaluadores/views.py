@@ -136,7 +136,6 @@ class CambioPasswordEvaluadorView(View):
         return redirect('dashboard_evaluador')
 
 
-
 ########### CREAR EVALUADOR ###########
 
 @method_decorator(visitor_required, name='dispatch')
@@ -151,7 +150,7 @@ class EvaluadorCreateView(View):
 
     def post(self, request, evento_id):
         evento = get_object_or_404(Evento, pk=evento_id)
-        form = EvaluadorForm(request.POST, request.FILES)
+        form = EvaluadorForm(request.POST, request.FILES, evento=evento)
 
         if form.is_valid():
             id = form.cleaned_data['id']
@@ -163,64 +162,89 @@ class EvaluadorCreateView(View):
 
             documento = request.FILES.get('eva_eve_documento')
 
-            password_plana = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
-
-            usuario = Usuario.objects.create(
-                username=username,
-                first_name=first_name,
-                last_name=last_name,
+            # 🔹 Verificar si ya existe el usuario
+            usuario, creado = Usuario.objects.get_or_create(
                 email=email,
-                telefono=telefono,
-                is_superuser=False,
-                is_staff=False,
-                is_active=True,
-                date_joined=localtime(now()),
-                rol="EVALUADOR",
-                password=make_password(password_plana)
+                defaults={
+                    "username": username,
+                    "first_name": first_name,
+                    "last_name": last_name,
+                    "telefono": telefono,
+                    "is_superuser": False,
+                    "is_staff": False,
+                    "is_active": True,
+                    "date_joined": localtime(now()),
+                    "rol": "EVALUADOR",
+                    "password": make_password(''.join(random.choices(string.ascii_letters + string.digits, k=20)))
+                }
             )
 
-            evaluador = Evaluador.objects.create(
-                id=id,
-                usuario=usuario
-            )
-
-            if not EvaluadorEvento.objects.filter(eva_eve_evaluador_fk=evaluador, eva_eve_evento_fk=evento).exists():
-                EvaluadorEvento.objects.create(
-                    eva_eve_evaluador_fk=evaluador,
-                    eva_eve_evento_fk=evento,
-                    eva_eve_fecha_hora=now(),
-                    eva_eve_estado="Pendiente",
-                    eva_eve_documento=documento
-                )
-
-                try:
-                    send_mail(
-                        subject="Registro exitoso a Event-Soft",
-                        message=(
-                            f"Hola Evaluador {usuario.first_name},\n\n"
-                            f"Te has registrado correctamente al evento \"{evento.eve_nombre}\".\n"
-                            f"Tu estado actual es 'Pendiente' y será revisado por el administrador del evento.\n\n"
-                            f"Por ahora puedes iniciar sesión con las siguientes credenciales:\n"
-                            f"Correo registrado: {usuario.email}\n"
-                            f"Contraseña generada: {password_plana}\n\n"
-                            f"Recomendamos cambiar tu contraseña después de iniciar sesión.\n\n"
-                            f"Atentamente,\nEquipo Event-Soft"
-                        ),
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[usuario.email],
-                        fail_silently=False
-                    )
-                except Exception as e:
-                    messages.warning(request, f"Usuario registrado, pero no se pudo enviar el correo: {e}")
-
-                messages.success(
-                    request,
-                    f"Evaluador registrado correctamente al evento '{evento.eve_nombre}'. "
-                    f"Se ha enviado un correo con las credenciales."
-                )
+            if creado:
+                # Usuario nuevo → generar contraseña
+                password_plana = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
+                usuario.password = make_password(password_plana)
+                usuario.save()
             else:
-                messages.warning(request, "Este evaluador ya está registrado para este evento.")
+                # Usuario ya existe → usa su contraseña actual
+                password_plana = None
 
+            # 🔹 Obtener o crear Evaluador asociado al usuario
+            evaluador, _ = Evaluador.objects.get_or_create(
+                usuario=usuario,
+                defaults={"id": id}
+            )
+
+            # 🔹 Verificar si ya está inscrito en este evento
+            if EvaluadorEvento.objects.filter(eva_eve_evaluador_fk=evaluador, eva_eve_evento_fk=evento).exists():
+                messages.warning(request, "Este evaluador ya está registrado en este evento.")
+                return redirect('pagina_principal')
+
+            # 🔹 Crear relación con el evento
+            EvaluadorEvento.objects.create(
+                eva_eve_evaluador_fk=evaluador,
+                eva_eve_evento_fk=evento,
+                eva_eve_fecha_hora=now(),
+                eva_eve_estado="Pendiente",
+                eva_eve_documento=documento
+            )
+
+            # 🔹 Enviar correo SIEMPRE (diferente mensaje si es nuevo o existente)
+            try:
+                if creado:
+                    mensaje = (
+                        f"Hola Evaluador {usuario.first_name},\n\n"
+                        f"Te has registrado correctamente al evento \"{evento.eve_nombre}\".\n"
+                        f"Tu estado actual es 'Pendiente' y será revisado por el administrador del evento.\n\n"
+                        f"Puedes iniciar sesión con las siguientes credenciales:\n"
+                        f"Correo registrado: {usuario.email}\n"
+                        f"Contraseña generada: {password_plana}\n\n"
+                        f"Recomendamos cambiar tu contraseña después de iniciar sesión.\n\n"
+                        f"Atentamente,\nEquipo Event-Soft"
+                    )
+                else:
+                    mensaje = (
+                        f"Hola Evaluador {usuario.first_name},\n\n"
+                        f"Te has inscrito correctamente al evento \"{evento.eve_nombre}\".\n"
+                        f"Tu estado actual es 'Pendiente' y será revisado por el administrador del evento.\n\n"
+                        f"Recuerda que debes iniciar sesión con tu correo: {usuario.email}\n"
+                        f"y tu contraseña actual (la misma que ya usas en Event-Soft).\n\n"
+                        f"Atentamente,\nEquipo Event-Soft"
+                    )
+
+                send_mail(
+                    subject="Registro exitoso a Event-Soft",
+                    message=mensaje,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[usuario.email],
+                    fail_silently=False
+                )
+            except Exception as e:
+                messages.warning(request, f"Usuario registrado, pero no se pudo enviar el correo: {e}")
+
+            messages.success(
+                request,
+                f"Evaluador registrado correctamente al evento '{evento.eve_nombre}'."
+            )
             return redirect('pagina_principal')
 
         else:
@@ -230,6 +254,7 @@ class EvaluadorCreateView(View):
             'form': form,
             'evento': evento
         })
+
 
 ######### EDITAR EVALUADOR ##########
 
@@ -242,22 +267,21 @@ class EditarEvaluadorView(View):
         usuario = evaluador.usuario
         form = EditarUsuarioEvaluadorForm(instance=usuario)
 
-        # Obtener la relación EvaluadorEvento
-        relacion = EvaluadorEvento.objects.filter(eva_eve_evaluador_fk=evaluador).first()
+        # Traer todas las relaciones del evaluador con los eventos
+        todas_relaciones = EvaluadorEvento.objects.filter(
+            eva_eve_evaluador_fk=evaluador
+        ).select_related("eva_eve_evento_fk")
 
         return render(request, self.template_name, {
             'form': form,
             'evaluador': evaluador,
             'usuario': usuario,
-            'relacion': relacion
+            'todas_relaciones': todas_relaciones
         })
 
     def post(self, request, evaluador_id):
         evaluador = get_object_or_404(Evaluador, id=evaluador_id)
         usuario = evaluador.usuario
-        relacion = EvaluadorEvento.objects.filter(eva_eve_evaluador_fk=evaluador).first()
-
-        original_username = usuario.username
         form = EditarUsuarioEvaluadorForm(request.POST, request.FILES, instance=usuario)
 
         nueva_contrasena = request.POST.get('nueva_contrasena')
@@ -265,75 +289,47 @@ class EditarEvaluadorView(View):
         confirmar_contrasena_nueva = request.POST.get('confirmar_contrasena_nueva')
 
         if form.is_valid():
-            nuevo_usuario = form.cleaned_data['username']
-            if nuevo_usuario != original_username:
-                if Usuario.objects.filter(username=nuevo_usuario).exclude(pk=usuario.pk).exists():
-                    form.add_error('nombre_usuario', "Este nombre de usuario ya está registrado.")
-                    return render(request, self.template_name, {
-                        'form': form,
-                        'evaluador': evaluador,
-                        'usuario': usuario,
-                        'relacion': relacion
-                    })
-
-            # Verificar y actualizar contraseña si se proporcionó
+            # 🔹 Verificar y actualizar contraseña
             if nueva_contrasena and confirmar_contrasena and confirmar_contrasena_nueva:
                 if not check_password(nueva_contrasena, usuario.password):
                     messages.error(request, "❌ La contraseña antigua no es correcta.")
-                    return render(request, self.template_name, {
-                        'form': form,
-                        'evaluador': evaluador,
-                        'usuario': usuario,
-                        'relacion': relacion
-                    })
+                    return self.get(request, evaluador_id)
 
                 if confirmar_contrasena != confirmar_contrasena_nueva:
                     messages.error(request, "❌ Las nuevas contraseñas no coinciden.")
-                    return render(request, self.template_name, {
-                        'form': form,
-                        'evaluador': evaluador,
-                        'usuario': usuario,
-                        'relacion': relacion
-                    })
+                    return self.get(request, evaluador_id)
 
                 if len(confirmar_contrasena) < 6:
                     messages.error(request, "❌ La nueva contraseña debe tener al menos 6 caracteres.")
-                    return render(request, self.template_name, {
-                        'form': form,
-                        'evaluador': evaluador,
-                        'usuario': usuario,
-                        'relacion': relacion
-                    })
+                    return self.get(request, evaluador_id)
 
                 usuario.set_password(confirmar_contrasena)
 
-            # ✅ Guardar nuevo documento si fue subido
-            if 'eva_eve_documento' in request.FILES:
-                documento = request.FILES['eva_eve_documento']
-                if not documento.name.lower().endswith('.pdf'):
-                    messages.error(request, "❌ Solo se permiten archivos PDF.")
-                    return render(request, self.template_name, {
-                        'form': form,
-                        'evaluador': evaluador,
-                        'usuario': usuario,
-                        'relacion': relacion
-                    })
-                relacion.eva_eve_documento = documento
-                relacion.save()
+            # ✅ Guardar documentos subidos (revisar por cada relación)
+            todas_relaciones = EvaluadorEvento.objects.filter(eva_eve_evaluador_fk=evaluador)
+            for relacion in todas_relaciones:
+                input_name = f"eva_eve_documento_{relacion.id}"
+                if input_name in request.FILES:
+                    documento = request.FILES[input_name]
+                    if not documento.name.lower().endswith('.pdf'):
+                        messages.error(request, f"❌ El documento para {relacion.eva_eve_evento_fk.eve_nombre} debe ser un PDF.")
+                        return self.get(request, evaluador_id)
 
+                    relacion.eva_eve_documento = documento
+                    relacion.save()
+
+            # ✅ Guardar datos del usuario
             form.save()
             usuario.save()
-            messages.success(request, "✅ Los datos del evaluador se actualizaron correctamente.")
+
+            messages.success(request, "✅ Los datos del evaluador y documentos se actualizaron correctamente.")
             return redirect('editar_evaluador', evaluador_id=evaluador_id)
+
         else:
             messages.error(request, "❌ No se pudo guardar. Revisa los errores del formulario.")
+            return self.get(request, evaluador_id)
 
-        return render(request, self.template_name, {
-            'form': form,
-            'evaluador': evaluador,
-            'usuario': usuario,
-            'relacion': relacion
-        })
+
 
 
 

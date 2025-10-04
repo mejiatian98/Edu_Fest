@@ -63,6 +63,12 @@ class MemoriaEvento(models.Model):
 
 
 
+from django.db import models
+from app_admin_eventos.models import Evento
+from django.core.exceptions import ValidationError
+
+    
+
 class AsistenteEvento(models.Model):
     asi_eve_asistente_fk = models.ForeignKey('app_usuarios.Asistente', on_delete=models.CASCADE)
     asi_eve_evento_fk = models.ForeignKey(Evento, on_delete=models.CASCADE)
@@ -71,10 +77,36 @@ class AsistenteEvento(models.Model):
     asi_eve_soporte = models.FileField(upload_to='upload/')
     asi_eve_qr = models.ImageField(upload_to='upload/')
     asi_eve_clave = models.CharField(max_length=45)
-    
+
+    def clean(self):
+        usuario = self.asi_eve_asistente_fk.usuario
+        evento = self.asi_eve_evento_fk
+
+        from app_evaluadores.models import EvaluadorEvento
+        from app_participantes.models import ParticipanteEvento
+
+        if ParticipanteEvento.objects.filter(par_eve_participante_fk__usuario=usuario, par_eve_evento_fk=evento).exists():
+            raise ValidationError("Este usuario ya está inscrito como Participante en este evento.")
+        if EvaluadorEvento.objects.filter(eva_eve_evaluador_fk__usuario=usuario, eva_eve_evento_fk=evento).exists():
+            raise ValidationError("Este usuario ya está inscrito como Evaluador en este evento.")
+        if AsistenteEvento.objects.filter(asi_eve_asistente_fk__usuario=usuario, asi_eve_evento_fk=evento).exclude(pk=self.pk).exists():
+            raise ValidationError("Este usuario ya está inscrito como Asistente en este evento.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
 
 
-    
+
+
+from django.db import models
+from app_admin_eventos.models import Evento, Criterio
+from app_usuarios.models import Participante
+from django.core.exceptions import ValidationError
+
+
+
+
 
 class Calificacion(models.Model):
     cal_evaluador_fk = models.ForeignKey('app_usuarios.Evaluador', on_delete=models.CASCADE)
@@ -82,15 +114,43 @@ class Calificacion(models.Model):
     cal_participante_fk = models.ForeignKey(Participante, on_delete=models.CASCADE)
     cal_valor = models.IntegerField()
 
+
+
 class EvaluadorEvento(models.Model):
     eva_eve_evaluador_fk = models.ForeignKey('app_usuarios.Evaluador', on_delete=models.CASCADE)
     eva_eve_evento_fk = models.ForeignKey(Evento, on_delete=models.CASCADE)
-    eva_eve_fecha_hora = models.DateTimeField(auto_now_add=True , null=True, blank=True)
-    eva_eve_estado = models.CharField(max_length=45 , null=True, blank=True)
-    eva_eve_qr = models.ImageField(upload_to='upload/' , null=True, blank=True)
-    eva_eve_clave = models.CharField(max_length=45 , null=True, blank=True)
-    eva_eve_documento = models.FileField(upload_to='upload/' , null=True, blank=True)
+    eva_eve_fecha_hora = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    eva_eve_estado = models.CharField(max_length=45, null=True, blank=True)
+    eva_eve_qr = models.ImageField(upload_to='upload/', null=True, blank=True)
+    eva_eve_clave = models.CharField(max_length=45, null=True, blank=True)
+    eva_eve_documento = models.FileField(upload_to='upload/', null=True, blank=True)
 
+    def clean(self):
+        usuario = self.eva_eve_evaluador_fk.usuario
+        evento = self.eva_eve_evento_fk
+
+        from app_asistentes.models import AsistenteEvento
+        from app_participantes.models import ParticipanteEvento
+
+        
+
+        if ParticipanteEvento.objects.filter(par_eve_participante_fk__usuario=usuario, par_eve_evento_fk=evento).exists():
+            raise ValidationError("Este usuario ya está inscrito como Participante en este evento.")
+        if AsistenteEvento.objects.filter(asi_eve_asistente_fk__usuario=usuario, asi_eve_evento_fk=evento).exists():
+            raise ValidationError("Este usuario ya está inscrito como Asistente en este evento.")
+        if EvaluadorEvento.objects.filter(eva_eve_evaluador_fk__usuario=usuario, eva_eve_evento_fk=evento).exclude(pk=self.pk).exists():
+            raise ValidationError("Este usuario ya está inscrito como Evaluador en este evento.")
+
+    def save(self, *args, **kwargs):
+        self.clean()
+        super().save(*args, **kwargs)
+
+
+
+
+from django.db import models
+from app_admin_eventos.models import Evento
+from django.core.exceptions import ValidationError
 
 
 class ParticipanteEvento(models.Model):
@@ -105,14 +165,36 @@ class ParticipanteEvento(models.Model):
     
     # Nuevos campos para manejo de grupos
     par_eve_es_grupo = models.BooleanField(default=False)
-    par_eve_proyecto_principal = models.ForeignKey('self', 
-                                                  related_name='miembros_proyecto',
-                                                  on_delete=models.CASCADE, 
-                                                  null=True, blank=True)
+    par_eve_proyecto_principal = models.ForeignKey(
+        'self',
+        related_name='miembros_proyecto',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
     par_eve_codigo_proyecto = models.CharField(max_length=10, null=True, blank=True)
 
     def __str__(self):
         return f"{self.par_eve_participante_fk} - {self.par_eve_evento_fk}"
+
+    def clean(self):
+        """ Validación: no permitir que el mismo usuario esté en el evento con otro rol """
+        usuario = self.par_eve_participante_fk.usuario
+        evento = self.par_eve_evento_fk
+
+        # Importamos aquí para evitar import circular
+        from app_asistentes.models import AsistenteEvento
+        from app_evaluadores.models import EvaluadorEvento
+
+        if AsistenteEvento.objects.filter(asi_eve_asistente_fk__usuario=usuario, asi_eve_evento_fk=evento).exists():
+            raise ValidationError("Este usuario ya está inscrito como Asistente en este evento.")
+        if EvaluadorEvento.objects.filter(eva_eve_evaluador_fk__usuario=usuario, eva_eve_evento_fk=evento).exists():
+            raise ValidationError("Este usuario ya está inscrito como Evaluador en este evento.")
+        if ParticipanteEvento.objects.filter(
+            par_eve_participante_fk__usuario=usuario,
+            par_eve_evento_fk=evento
+        ).exclude(pk=self.pk).exists():
+            raise ValidationError("Este usuario ya está inscrito como Participante en este evento.")
 
     def save(self, *args, **kwargs):
         # Generar código único de proyecto si no existe y es el proyecto principal
@@ -120,6 +202,9 @@ class ParticipanteEvento(models.Model):
             import random
             import string
             self.par_eve_codigo_proyecto = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        
+        # Ejecutar validaciones antes de guardar
+        self.clean()
         super().save(*args, **kwargs)
 
     @property
@@ -143,6 +228,9 @@ class ParticipanteEvento(models.Model):
             miembros.insert(0, self)  # Agregar el líder al inicio
             return miembros
 
+
+from django.db import models
+from django.contrib.auth.models import AbstractUser
 
 
 class Usuario(AbstractUser):
@@ -187,5 +275,6 @@ class AdministradorEvento(models.Model):
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Administrador de Evento"
+
 
 

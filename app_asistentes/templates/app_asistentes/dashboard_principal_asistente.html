@@ -30,11 +30,6 @@
 
                         {% if request.resolver_match.url_name == 'dashboard_asistente' %}
                             {% if relacion and relacion.pk %}
-                            {% for evento in eventos %}
-                                <div class="col py-2">
-                                    <a href="{% url 'ingreso_evento_asi' evento.id %}" class="nav-link fw-bold text-white">Acceso <i class="bi bi-universal-access-circle"></i></a>
-                                </div>
-                            {% endfor %}
                                 <a class="nav-link fw-bold text-white" href="{% url 'editar_preinscripcion_asistente' relacion.pk %}">
                                     Editar Perfil <i class="bi bi-pencil-square"></i>
                                 </a>
@@ -91,7 +86,6 @@
     
 
     {% block content %}
-        {% for evento in eventos %}
         <section class="contenedor-mv caja-info">
             <div class="text-center  caja-mv p-4 ">
                 <p>Acá puedes encontrar el manual de uso de la plataforma</p>
@@ -102,10 +96,7 @@
                 </a>
             </div>
         </section>
-
-        <hr class="container my-3">
-
-
+        {% for evento in eventos %}
             <div class="contenedor-mv caja-info mb-5">
                 <div class="caja-mv p-4">
                     <div class="row no-gutters">
@@ -133,28 +124,35 @@
                                     <p><strong>Costo: </strong> {{ evento.eve_tienecosto }}</p>
                                 </div>
                             </div>
-
-                            <div class="info d-flex flex-column align-items-center 
-                                {% if evento.eve_estado == 'Cancelado' or evento.eve_estado == 'Finalizado' %}
-                                    text-danger
-                                {% else %}
-                                    text-success
-                                {% endif %}">
-                                <h2>{{ evento.eve_estado }}</h2>
-                            </div>
+                            <div class="alert-secondary text-white p-3 rounded">
+                                <div class="info d-flex flex-column align-items-center 
+                                    {% if evento.eve_estado == 'Cancelado' or evento.eve_estado == 'Finalizado' %}
+                                        text-danger
+                                    {% else %}
+                                        text-success
+                                    {% endif %}">
+                                    <h2>{{ evento.eve_estado }}</h2>
+                                </div>
+                            
 
                             
 
-                            {% if evento.eve_estado == 'Cancelado' and evento.eve_cancelacion_iniciada %}
-                                <div class="text-center mt-2">
-                                    <p class="text-danger fw-bold"><small>Tiempo restante para cancelar definitivamente:</small></p>
-                                    <h4 id="countdown" class="text-danger" data-cancel-time="{{ evento.eve_cancelacion_iniciada|date:'Y-m-d H:i:s' }}"></h4>
-                                </div>
-                            {% endif %}
+                                {% if evento.eve_estado == 'Cancelado' and evento.eve_cancelacion_iniciada %}
+                                    <div class="text-center mt-2">
+                                        <p class="text-danger fw-bold"><small>Tiempo restante para cancelar definitivamente:</small></p>
+                                        <h4 id="countdown" class="text-danger" data-cancel-time="{{ evento.eve_cancelacion_iniciada|date:'Y-m-d H:i:s' }}"></h4>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    <div class="text-center m-5">
-                        <a href="{% url 'ver_info_evento_asi' evento.id %}" class="btn btn-outline-success w-100 btn-block">Ver Información</a>
+                    <div class="text-center">
+                        <div class="col mb-3">
+                            <a href="{% url 'ver_info_evento_asi' evento.id %}" class="btn btn-warning w-100"><i class="bi bi-info-square"></i> Ver Información</a>
+                        </div>
+                        <div class="col mb-3">
+                            <a href="{% url 'ingreso_evento_asi' evento.id %}" class="btn btn-success w-100"><i class="bi bi-universal-access-circle"></i> Acceso </a>
+                        </div>
                     </div>
                     <hr>
 
@@ -183,7 +181,7 @@
                     </div>
                 </div>
             </div>
-            <!-- Modal de soporte -->
+        </div>
     <div>
         {% include 'modal_soporte.html' %}
     </div>

@@ -121,31 +121,45 @@ class AsistenteCreateView(View):
             telefono = form.cleaned_data['telefono']
             username = form.cleaned_data['username']
 
-            if Usuario.objects.filter(email=email).exists():
-                messages.error(request, "Ya existe un usuario registrado con este correo.")
+            # 🔹 Validar si ya existe inscrito al mismo evento
+            if AsistenteEvento.objects.filter(
+                asi_eve_evento_fk=evento,
+                asi_eve_asistente_fk__usuario__email=email
+            ).exists():
+                messages.error(request, "Ya estás inscrito como asistente en este evento.")
                 return render(request, 'crear_asistente.html', {
                     'form': form, 'evento': evento, 'es_de_pago': es_de_pago
                 })
 
-            password_plana = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
-            usuario = Usuario.objects.create(
-                username=username,
-                first_name=first_name,
-                last_name=last_name,
-                email=email,
-                telefono=telefono,
-                is_superuser=False,
-                is_staff=False,
-                is_active=True,
-                date_joined=timezone.now(),
-                rol="ASISTENTE",
-                password=make_password(password_plana),
-            )
+            # 🔹 Permitir múltiples eventos, pero validar correo único global
+            if not Usuario.objects.filter(email=email).exists():
+                # Crear nuevo usuario solo si no existe
+                password_plana = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
+                usuario = Usuario.objects.create(
+                    username=username,
+                    first_name=first_name,
+                    last_name=last_name,
+                    email=email,
+                    telefono=telefono,
+                    is_superuser=False,
+                    is_staff=False,
+                    is_active=True,
+                    date_joined=timezone.now(),
+                    rol="ASISTENTE",
+                    password=make_password(password_plana),
+                )
 
-            asistente = Asistente.objects.create(
-                usuario=usuario,
-                id=id
-            )
+                # 🔹 Crear el asistente sin pasar 'id', Django lo genera automáticamente
+                asistente = Asistente.objects.create(usuario=usuario)
+
+            else:
+                # Reutilizar usuario existente
+                usuario = Usuario.objects.get(email=email)
+                # 🔹 Reutilizar o crear el Asistente asociado sin duplicar la PK
+                asistente, _ = Asistente.objects.get_or_create(usuario=usuario)
+
+                password_plana = "Tu contraseña actual"  
+ 
 
             documento_pago = request.FILES.get('asi_eve_soporte') if es_de_pago else None
             estado = "Pendiente" if es_de_pago else "Aprobado"
@@ -195,7 +209,7 @@ class AsistenteCreateView(View):
 
             body += "¡Gracias por registrarte!\nEquipo de Event-Soft."
 
-            email = EmailMessage(
+            email_msg = EmailMessage(
                 subject=subject,
                 body=body,
                 from_email=DEFAULT_FROM_EMAIL,
@@ -203,9 +217,9 @@ class AsistenteCreateView(View):
             )
 
             if not es_de_pago and qr_bytes and qr_filename:
-                email.attach(qr_filename, qr_bytes, 'image/png')
+                email_msg.attach(qr_filename, qr_bytes, 'image/png')
 
-            email.send(fail_silently=False)
+            email_msg.send(fail_silently=False)
 
             messages.success(request, f"La preinscripción fue exitosa al evento \"{evento.eve_nombre}\".")
             return redirect('pagina_principal')
@@ -297,12 +311,18 @@ class EditarPreinscripcionAsistenteView(View):
         evento = relacion.asi_eve_evento_fk
         form = EditarUsuarioAsistenteForm(instance=asistente.usuario)
 
+        # 🔹 Traer todos los eventos donde está inscrito
+        todas_relaciones = AsistenteEvento.objects.filter(
+            asi_eve_asistente_fk=asistente
+        ).select_related("asi_eve_evento_fk")
+
         return render(request, self.template_name, {
             'form': form,
             'evento': evento,
             'relacion': relacion,
             'usuario': asistente.usuario,
-            'asistente': asistente
+            'asistente': asistente,
+            'todas_relaciones': todas_relaciones
         })
 
     def post(self, request, id):
@@ -312,7 +332,6 @@ class EditarPreinscripcionAsistenteView(View):
         usuario = asistente.usuario
 
         form = EditarUsuarioAsistenteForm(request.POST, instance=usuario)
-        documento_pago = request.FILES.get('asi_eve_soporte')
 
         # Contraseñas
         contrasena_actual = request.POST.get('nueva_contrasena')
@@ -342,21 +361,34 @@ class EditarPreinscripcionAsistenteView(View):
 
             usuario.save()
 
-            if documento_pago:
-                relacion.asi_eve_soporte = documento_pago
-                relacion.save()
+            # 🔹 Procesar soportes para TODOS los eventos donde está inscrito
+            todas_relaciones = AsistenteEvento.objects.filter(
+                asi_eve_asistente_fk=asistente
+            )
+
+            for r in todas_relaciones:
+                file_key = f"asi_eve_soporte_{r.id}"
+                documento_pago = request.FILES.get(file_key)
+                if documento_pago:
+                    r.asi_eve_soporte = documento_pago
+                    r.save()
 
             messages.success(request, "Tu información fue actualizada correctamente.")
             return redirect('editar_preinscripcion_asistente', id=id)
+
+        # Si hay errores, volvemos a mostrar el formulario
+        todas_relaciones = AsistenteEvento.objects.filter(
+            asi_eve_asistente_fk=asistente
+        ).select_related("asi_eve_evento_fk")
 
         return render(request, self.template_name, {
             'form': form,
             'evento': evento,
             'relacion': relacion,
             'usuario': asistente.usuario,
-            'asistente': asistente
+            'asistente': asistente,
+            'todas_relaciones': todas_relaciones
         })
-
 
 
 

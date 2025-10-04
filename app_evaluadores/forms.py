@@ -1,86 +1,80 @@
 from django import forms
 from app_usuarios.models import Usuario, Evaluador
+from app_evaluadores.models import EvaluadorEvento
+
 
 class EvaluadorForm(forms.ModelForm):
-    id = forms.CharField(
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Ingrese su cédula',
-            'type': 'number',
-            'min': '1'
-        }),
-        label='Cédula',
-        required=True
-    )
-
-    username = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese nombre de usuario'}),
-        label='Nombre de usuario',
-        required=True
-    )
-
-    first_name = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su nombre'}),
-        label='Nombre',
-        required=True
-    )
-
-    last_name = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su apellido'}),
-        label='Apellido',
-        required=True
-    )
-
-    email = forms.EmailField(
-        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su correo'}),
-        label='Correo',
-        required=True
-    )
-
-    telefono = forms.CharField(
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su teléfono', 'type': 'number'}),
-        label='Teléfono',
-        required=False
+    id = forms.IntegerField(
+        label="Cédula",
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ingresa tu número de cédula'})
     )
 
     class Meta:
         model = Usuario
-        fields = ['username', 'first_name', 'last_name', 'email', 'telefono']
+        fields = ['id', 'username', 'email', 'telefono', 'first_name', 'last_name']
+        widgets = {
+            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@email.com'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu nombre'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu apellido'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        self.evento = kwargs.pop('evento', None)  # 🔹 Guardamos el evento que viene desde la vista
+        super().__init__(*args, **kwargs)
 
     def clean_id(self):
+        """
+        Verifica que la cédula no esté repetida en el mismo evento.
+        Pero permite inscribirse en diferentes eventos con la misma cédula.
+        """
         id = self.cleaned_data['id']
-        if not id.isdigit():
-            raise forms.ValidationError("La cédula debe contener solo números.")
-        if Evaluador.objects.filter(id=id).exists():
-            raise forms.ValidationError("Esta cédula ya está registrada.")
+        if self.evento:
+            evaluador_existente = Evaluador.objects.filter(id=id).first()
+            if evaluador_existente and EvaluadorEvento.objects.filter(
+                eva_eve_evaluador_fk=evaluador_existente,
+                eva_eve_evento_fk=self.evento
+            ).exists():
+                raise forms.ValidationError(
+                    f"Ya existe un evaluador con la cédula {id} registrado para este evento."
+                )
         return id
 
-    def clean_email(self):
-        email = self.cleaned_data['email']
-        if Usuario.objects.filter(email=email).exists():
-            raise forms.ValidationError("Este correo ya está registrado.")
-        return email
-
     def clean_username(self):
+        """
+        Permite reutilizar el mismo username si ya existe en la BD.
+        Solo se bloquea en la lógica de la vista si intenta inscribirse en el mismo evento.
+        """
         username = self.cleaned_data['username']
-        if Usuario.objects.filter(username=username).exists():
-            raise forms.ValidationError("Este nombre de usuario ya está registrado.")
         return username
 
+    def clean_email(self):
+        """
+        Igual que con username: el mismo correo puede ser usado en diferentes eventos.
+        """
+        email = self.cleaned_data['email']
+        return email
 
+    def validate_unique(self):
+        """
+        Sobrescribimos la validación de unicidad para que Django no bloquee
+        por username/email duplicados en la tabla Usuario.
+        """
+        pass
+
+
+
+
+
+# Form para editar
 class EditarUsuarioEvaluadorForm(forms.ModelForm):
     class Meta:
         model = Usuario
-        fields = ['username', 'first_name', 'last_name', 'telefono']
+        fields = ['first_name', 'last_name', 'email', 'telefono']
         widgets = {
-            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese nombre de usuario'}),
-            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su nombre'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su apellido'}),
-            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su teléfono', 'type': 'number'}),
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'telefono': forms.TextInput(attrs={'class': 'form-control'}),
         }
-
-    def clean_username(self):
-        username = self.cleaned_data['username']
-        if Usuario.objects.filter(username=username).exclude(id=self.instance.id).exists():
-            raise forms.ValidationError("Este nombre de usuario ya está registrado.")
-        return username

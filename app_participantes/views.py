@@ -496,12 +496,20 @@ class EditarPreinscripcionView(View):
         evento = relacion.par_eve_evento_fk
         form = EditarUsuarioParticipanteForm(instance=participante.usuario)
 
+        # 🔹 Traer todos los eventos donde está inscrito
+        todas_relaciones = ParticipanteEvento.objects.filter(
+            par_eve_participante_fk=participante
+        ).select_related("par_eve_evento_fk")
+
+        
+
         return render(request, self.template_name, {
             'form': form,
             'evento': evento,
             'relacion': relacion,
             'usuario': participante.usuario,
-            'participante': participante
+            'participante': participante,
+            'todas_relaciones': todas_relaciones
         })
 
     def post(self, request, id):
@@ -511,7 +519,6 @@ class EditarPreinscripcionView(View):
         usuario = participante.usuario
 
         form = EditarUsuarioParticipanteForm(request.POST, instance=usuario)
-        documento_pago = request.FILES.get('par_eve_documentos')
 
         # Contraseñas
         contrasena_actual = request.POST.get('nueva_contrasena')
@@ -522,7 +529,7 @@ class EditarPreinscripcionView(View):
             usuario = form.save(commit=False)
             usuario.ultimo_acceso = localtime(now())
 
-            # Validar y cambiar la contraseña si se proporcionaron campos
+            # Validar y cambiar la contraseña
             if contrasena_actual or nueva_contrasena or confirmar_nueva:
                 if not usuario.check_password(contrasena_actual):
                     messages.error(request, "La contraseña actual no es correcta.")
@@ -535,13 +542,23 @@ class EditarPreinscripcionView(View):
                     return redirect('editar_preinscripcion', id=id)
 
                 usuario.set_password(nueva_contrasena)
-                update_session_auth_hash(request, usuario)  # Mantiene sesión activa después del cambio
+                update_session_auth_hash(request, usuario)
 
             usuario.save()
 
-            if documento_pago:
-                relacion.par_eve_documentos = documento_pago
-                relacion.save()
+            # 🔹 Guardar documentos de TODOS los eventos
+            todas_relaciones = ParticipanteEvento.objects.filter(
+                par_eve_participante_fk=participante
+            )
+
+            for r in todas_relaciones:
+                file_key = f"par_eve_documentos_{r.id}"
+                documento = request.FILES.get(file_key)
+                if documento and r.par_eve_estado != "Aprobado":
+                    r.par_eve_documentos = documento
+                    r.save()
+                elif documento and r.par_eve_estado == "Aprobado":
+                    messages.warning(request, f"El evento {r.par_eve_evento_fk.eve_nombre} ya está aprobado. No puedes subir un nuevo documento.")
 
             messages.success(request, "Tu información fue actualizada correctamente.")
             return redirect('editar_preinscripcion', id=id)
@@ -553,6 +570,7 @@ class EditarPreinscripcionView(View):
             'usuario': participante.usuario,
             'participante': participante
         })
+
 
 
 ####### ACCESO A EVENTO ######

@@ -127,40 +127,38 @@
                                 </div>
                             </div>
 
-                            <div class="info d-flex flex-column align-items-center 
-                                {% if evento.eve_estado == 'Cancelado' or evento.eve_estado == 'Finalizado' %}
-                                    text-danger
-                                {% else %}
-                                    text-success
-                                {% endif %}">
-                                <h2>{{ evento.eve_estado }}</h2>
-                            </div>
-
-                            
-
-                            {% if evento.eve_estado == 'Cancelado' and evento.eve_cancelacion_iniciada %}
-                                <div class="text-center">
-                                    <p class="text-danger fw-bold"><small>Tiempo restante para cancelar definitivamente:</small></p>
-                                    <h4 id="countdown" class="text-danger" data-cancel-time="{{ evento.eve_cancelacion_iniciada|date:'Y-m-d H:i:s' }}"></h4>
-                                    <form action="{% url 'normal_evento' evento.id %}" method="post" class="d-inline">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn btn-outline-success">Revertir cambios</button>
-                                    </form>
+                            <div class="alert-secondary text-white p-3 rounded">
+                                <div class="info d-flex flex-column align-items-center 
+                                    {% if evento.eve_estado == 'Cancelado' or evento.eve_estado == 'Finalizado' %}
+                                        text-danger
+                                    {% else %}
+                                        text-success
+                                    {% endif %}">
+                                    <h2>{{ evento.eve_estado }}</h2>
                                 </div>
-                            {% endif %}
+
+                                {% if evento.eve_estado == 'Cancelado' and evento.eve_cancelacion_iniciada %}
+                                    <div class="text-center">
+                                        <p class="text-danger fw-bold"><small>Tiempo restante para cancelar definitivamente:</small></p>
+                                        <h4 id="countdown" class="text-danger" data-cancel-time="{{ evento.eve_cancelacion_iniciada|date:'Y-m-d H:i:s' }}"></h4>
+                                        <form action="{% url 'normal_evento' evento.id %}" method="post" class="d-inline">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-success">Revertir cambios</button>
+                                        </form>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
                     <div class="text-center">
-                        
-                        
                         <div class="col mb-3">
-                            <a href="{% url 'editar_evento' evento.id %}" class="btn btn-primary w-100">Editar evento</a>
+                            <a href="{% url 'editar_evento' evento.id %}" class="btn btn-primary w-100"><i class="bi bi-pencil-square"></i> Editar evento</a>
                         </div>
                         <div class="col mb-3">
-                            <a href="{% url 'ver_info_evento_admin' evento.id %}" class="btn btn-warning w-100">Ver Información</a>
+                            <a href="{% url 'ver_info_evento_admin' evento.id %}" class="btn btn-warning w-100"><i class="bi bi-info-square"></i> Ver Información</a>
                         </div>
                         <div class="col mb-3">
-                            <a href="{% url 'cancelar_evento_page' evento.id %}" class="btn btn-danger w-100">Cancelar evento</a>
+                            <a href="{% url 'cancelar_evento_page' evento.id %}" class="btn btn-danger w-100"><i class="bi bi-x-circle"></i> Cancelar evento</a>
                         </div>
                     </div>
 

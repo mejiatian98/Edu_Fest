@@ -11,7 +11,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>
-    <title>{% block title %} {% endblock %} Participante-Eventos | Edu-Fest</title>
+    <title>{% block title %} {% endblock %} Exponente-Eventos | Edu-Fest</title>
 </head>
 <body>
     <header>
@@ -26,14 +26,9 @@
 
                     <!-- Botón Salir -->
                     <div class="d-flex align-items-center gap-3">
-                        <!-- Nombre del Participante -->
+                        <!-- Nombre del Exponente -->
 
                         {% if request.resolver_match.url_name == 'dashboard_participante' %}
-                        {% for evento in eventos %}
-                            <div class="col py-2">
-                                <a href="{% url 'ingreso_evento_par' evento.id %}" class="nav-link fw-bold text-white">Acceso <i class="bi bi-universal-access-circle"></i></a>
-                            </div>
-                        {% endfor %}
                             {% if relacion and relacion.pk %}
                                 <a class="nav-link fw-bold text-white" href="{% url 'editar_preinscripcion' relacion.pk %}">
                                     Editar Perfil <i class="bi bi-pencil-square"></i>
@@ -42,9 +37,9 @@
                         {% endif %}
 
 
-                        <!-- Nombre del Participante -->
+                        <!-- Nombre del Exponente -->
                         <a class="nav-link fw-bold text-white">
-                            🟢 Participante {{ request.session.participante_nombre }}
+                            🟢 Exponente {{ request.session.participante_nombre }}
                         </a>
                         <!-- Cerrar Sesión -->
                         <a class="nav-link fw-bold text-white d-flex align-items-center" href="{% url 'logout_view' %}">
@@ -129,28 +124,37 @@
                                 </div>
                             </div>
 
-                            <div class="info d-flex flex-column align-items-center 
-                                {% if evento.eve_estado == 'Cancelado' or evento.eve_estado == 'Finalizado' %}
-                                    text-danger
-                                {% else %}
-                                    text-success
-                                {% endif %}">
-                                <h2>{{ evento.eve_estado }}</h2>
-                            </div>
+                            <div class="alert-secondary text-white p-3 rounded">
+                                <div class="info d-flex flex-column align-items-center 
+                                    {% if evento.eve_estado == 'Cancelado' or evento.eve_estado == 'Finalizado' %}
+                                        text-danger 
+                                    {% else %}
+                                        text-success
+                                    {% endif %}">
+                                    <h2>{{ evento.eve_estado }}</h2>
+                                </div>
+                            
 
                             
 
-                            {% if evento.eve_estado == 'Cancelado' and evento.eve_cancelacion_iniciada %}
-                                <div class="text-center mt-2">
-                                    <p class="text-danger fw-bold"><small>Tiempo restante para cancelar definitivamente:</small></p>
-                                    <h4 id="countdown" class="text-danger" data-cancel-time="{{ evento.eve_cancelacion_iniciada|date:'Y-m-d H:i:s' }}"></h4>
-                                </div>
-                            {% endif %}
+                                {% if evento.eve_estado == 'Cancelado' and evento.eve_cancelacion_iniciada %}
+                                    <div class="text-center mt-2">
+                                        <p class="text-danger fw-bold"><small>Tiempo restante para cancelar definitivamente:</small></p>
+                                        <h4 id="countdown" class="text-danger" data-cancel-time="{{ evento.eve_cancelacion_iniciada|date:'Y-m-d H:i:s' }}"></h4>
+                                    </div>
+                                {% endif %}
+                            </div>
                         </div>
                     </div>
-                    <div class="text-center m-5">
-                        <a href="{% url 'ver_info_evento_par' evento.id %}" class="btn btn-warning w-100"> Ver Información</a>
+                    <div class="text-center">
+                        <div class="col mb-3">
+                            <a href="{% url 'ver_info_evento_par' evento.id %}" class="btn btn-warning w-100"><i class="bi bi-info-square"></i> Ver Información</a>
+                        </div>
+                        <div class="col mb-3">
+                            <a href="{% url 'ingreso_evento_par' evento.id %}" class="btn btn-success w-100"><i class="bi bi-universal-access-circle"></i> Acceso </a>
+                        </div>
                     </div>
+
                     <hr>
                     <h3 class="text-center">Acciones</h3>
 
@@ -169,16 +173,16 @@
                                 
                                 {% if criterios_completos|dict_get:evento.id %}
                                     <a href="{% url 'ver_criterios_par' evento.id %}" class="btn btn-outline-success w-50">
+                                        <i class="bi bi-body-text"></i> Ver lista de Criterios
+                                    </a>
                                 {% else %}
                                     <button class="btn btn-secondary w-100" disabled>No hay criterios válidos</button>
-                                {% endif %}
-                    
-                                <i class="bi bi-body-text"></i> Ver lista de Criterios
-                                </a>
+                                {% endif %}                                
                                 <p class="mt-2 text-muted small">Accede a la lista de criterios a calificar.</p>
                             </div>
                         </div>
                     </div>
+
 
                     <!-- Memorías -->
                     <div class="accordion-item p-3">

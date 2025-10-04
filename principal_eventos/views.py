@@ -105,8 +105,6 @@ def login_view(request):
     return render(request, 'login.html', {'error': error})
 
 
-
-
 ########### Logout ###########
 
 def logout_view(request):
@@ -234,7 +232,7 @@ class MenuPrincipalVisitanteView(ListView):
 
         # Actualizar eventos cuyo eve_fecha_fin es hoy y están en estado 'publicado'
         Evento.objects.filter(
-            eve_estado__iexact='publicado',
+            eve_estado__iexact='Publicado',
             eve_fecha_fin=today
         ).update(eve_estado='Finalizado')
 

@@ -1,5 +1,6 @@
 from django.db import models
 from app_admin_eventos.models import Evento
+from django.core.exceptions import ValidationError
 
 
 class ParticipanteEvento(models.Model):
@@ -14,14 +15,36 @@ class ParticipanteEvento(models.Model):
     
     # Nuevos campos para manejo de grupos
     par_eve_es_grupo = models.BooleanField(default=False)
-    par_eve_proyecto_principal = models.ForeignKey('self', 
-                                                  related_name='miembros_proyecto',
-                                                  on_delete=models.CASCADE, 
-                                                  null=True, blank=True)
+    par_eve_proyecto_principal = models.ForeignKey(
+        'self',
+        related_name='miembros_proyecto',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True
+    )
     par_eve_codigo_proyecto = models.CharField(max_length=10, null=True, blank=True)
 
     def __str__(self):
         return f"{self.par_eve_participante_fk} - {self.par_eve_evento_fk}"
+
+    def clean(self):
+        """ Validación: no permitir que el mismo usuario esté en el evento con otro rol """
+        usuario = self.par_eve_participante_fk.usuario
+        evento = self.par_eve_evento_fk
+
+        # Importamos aquí para evitar import circular
+        from app_asistentes.models import AsistenteEvento
+        from app_evaluadores.models import EvaluadorEvento
+
+        if AsistenteEvento.objects.filter(asi_eve_asistente_fk__usuario=usuario, asi_eve_evento_fk=evento).exists():
+            raise ValidationError("Este usuario ya está inscrito como Asistente en este evento.")
+        if EvaluadorEvento.objects.filter(eva_eve_evaluador_fk__usuario=usuario, eva_eve_evento_fk=evento).exists():
+            raise ValidationError("Este usuario ya está inscrito como Evaluador en este evento.")
+        if ParticipanteEvento.objects.filter(
+            par_eve_participante_fk__usuario=usuario,
+            par_eve_evento_fk=evento
+        ).exclude(pk=self.pk).exists():
+            raise ValidationError("Este usuario ya está inscrito como Participante en este evento.")
 
     def save(self, *args, **kwargs):
         # Generar código único de proyecto si no existe y es el proyecto principal
@@ -29,6 +52,9 @@ class ParticipanteEvento(models.Model):
             import random
             import string
             self.par_eve_codigo_proyecto = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
+        
+        # Ejecutar validaciones antes de guardar
+        self.clean()
         super().save(*args, **kwargs)
 
     @property

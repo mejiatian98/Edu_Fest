@@ -38,8 +38,8 @@
 
         <div class="row -12">
             <div class="col mb-3">
-                <label for="id" class="form-label"></label>
-                {{ form.id}}
+                <label for="{{ form.id.id_for_label }}" class="form-label">Cédula</label>
+                {{ form.id }}
                 {% if form.id.errors %}
                     <div class="text-danger">
                         {{ form.id.errors }}
@@ -48,7 +48,7 @@
             </div>
 
             <div class="col mb-3">
-                <label for="username" class="form-label"></label>
+                <label for="{{ form.username.id_for_label }}" class="form-label">Nombre de usuario</label>
                 {{ form.username }}
                 {% if form.username.errors %}
                     <div class="text-danger">
@@ -58,7 +58,7 @@
             </div>
 
             <div class="col mb-3">
-                <label for="email" class="form-label"></label>
+                <label for="{{ form.email.id_for_label }}" class="form-label">Correo electrónico</label>
                 {{ form.email }}
                 {% if form.email.errors %}
                     <div class="text-danger">
@@ -71,7 +71,7 @@
 
         <div class="row -12">
             <div class="col mb-3">
-                <label for="telefono" class="form-label"></label>
+                <label for="{{ form.telefono.id_for_label }}" class="form-label">Teléfono</label>
                 {{ form.telefono }}
                 {% if form.telefono.errors %}
                     <div class="text-danger">
@@ -80,7 +80,7 @@
                 {% endif %}
             </div>
             <div class="col mb-3">
-                <label for="first_name" class="form-label"></label>
+                <label for="{{ form.first_name.id_for_label }}" class="form-label">Nombre</label>
                 {{ form.first_name }}
                 {% if form.first_name.errors %}
                     <div class="text-danger">
@@ -90,7 +90,7 @@
             </div>
 
             <div class="col mb-3">
-                <label for="last_name" class="form-label"></label>
+                <label for="{{ form.last_name.id_for_label }}" class="form-label">Apellido</label>
                 {{ form.last_name }}
                 {% if form.last_name.errors %}
                     <div class="text-danger">

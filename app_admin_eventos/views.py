@@ -57,6 +57,10 @@ from app_asistentes.models import AsistenteEvento
 from app_participantes.models import ParticipanteEvento
 from app_evaluadores.models import EvaluadorEvento
 
+
+
+
+
 ############ MEMORIAS DE ADMINISTRADOR ############
 @method_decorator(admin_required, name='dispatch')
 class MemoriasAdminView(View):
@@ -437,6 +441,7 @@ class CancelarEventoView(View):
 
         return redirect('cancelar_evento_page', evento_id=evento.id)
 
+
 @method_decorator(admin_required, name='dispatch')
 class EliminarDefiniEvento(DetailView):
     model = Evento
@@ -486,7 +491,7 @@ class EliminarDefiniEvento(DetailView):
 
         # Obtener todos los evaluadores del evento
         evaluadores_evento = EvaluadorEvento.objects.filter(eva_eve_evento_fk=evento)
-        evaluadores_correos = [ee.eva_eve_evaluador_fk.eva_correo for ee in evaluadores_evento]
+        evaluadores_correos = [ee.eva_eve_evaluador_fk.usuario.eva_correo for ee in evaluadores_evento]
 
         # Obtener el administrador del evento
         administrador_correo = [evento.eve_administrador_fk.usuario.correo]

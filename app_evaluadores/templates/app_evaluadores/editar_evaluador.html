@@ -25,25 +25,48 @@
         
         {{ form.as_p }}
 
-        <div class="mb-3">
-            <label class="form-label">Documento actual:</label><br>
-            {% if relacion.eva_eve_documento %}
-                <a href="{{ relacion.eva_eve_documento.url }} " target="_blank" class="btn btn-sm btn-outline-primary">Ver documento</a>
-            {% else %}
-                <span class="text-muted">No cargado aún</span>
-            {% endif %}
+        <hr>
+
+        <!-- mostrar todos los soportes de pago -->
+        <div class="mb-3 text-center">
+            <h4 class="form-label my-5">Documentos de Certificaciones</h4>
+            <ul class="list-group">
+                {% for r in todas_relaciones %}
+                    <li class="list-group-item d-flex justify-content-center align-items-center">
+                        <div>
+                            <div class="mb-5">
+                                <strong>Evento:</strong> {{ r.eva_eve_evento_fk.eve_nombre }}<br>
+                                <strong>Estado:</strong> {{ r.eva_eve_estado }}
+                            </div>
+
+                            {% if r.eva_eve_documento %}
+                                <a href="{{ r.eva_eve_documento.url }}" target="_blank" class="btn btn-outline-primary btn-sm mt-2">
+                                    Ver documento
+                                </a>
+                            {% else %}
+                                <span class="text-muted">No cargado aún</span>
+                            {% endif %}
+                            
+                            
+                            <!-- Input solo visible si NO está aprobado -->
+                            {% if r.eva_eve_estado != "Aprobado" %}
+                                <div class="mb-3 mt-2">
+                                    <label class="form-label">Actualizar documento:</label>
+                                    <input type="file" name="eva_eve_documento_{{ r.id }}" class="form-control" accept=".pdf">
+                                </div>
+                            {% else %}
+                                <p class="text-success mt-3">
+                                    <strong>✅ Ya aprobado, no es necesario editar el documento.</strong>
+                                </p>
+                            {% endif %}
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Actualizar Documento:</label>
-            <input type="file" name="eva_eve_documento" id="pdfInput" class="form-control" accept=".pdf">
-        </div>
 
-        <!-- Contenedor de previsualización -->
-        <div class="mb-3" id="pdfPreviewContainer" style="display: none;">
-            <label class="form-label btn-info btn-sm">Vista previa del nuevo documento:</label>
-            <iframe id="pdfPreview" width="100%" height="400px" style="border: 1px solid #ccc; border-radius: 8px;"></iframe>
-        </div>
+
 
         <div class="mb-3">
             <label class="form-label">Contraseña Antigua</label>
