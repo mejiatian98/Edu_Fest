@@ -282,6 +282,12 @@ class EventoDetailView(DetailView):
     template_name = 'info_evento.html'
     context_object_name = 'evento'
 
+    def get_queryset(self):
+        # Corrección: Solo permitir la visualización de eventos Publicados o Finalizados
+        return self.model.objects.filter(
+            Q(eve_estado__iexact='Publicado') | Q(eve_estado__iexact='Finalizado')
+        )
+
 @method_decorator(visitor_required, name='dispatch')
 class EventoPreinscripcionesView(DetailView):
     model = Evento

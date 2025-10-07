@@ -23,50 +23,18 @@ class AsistenteForm(forms.ModelForm):
         self.evento = kwargs.pop('evento', None)
         super().__init__(*args, **kwargs)
 
-    def clean_id(self):
-        id = self.cleaned_data['id']
-        if self.evento:
-            asistente_existente = Asistente.objects.filter(id=id).first()
-            if asistente_existente and AsistenteEvento.objects.filter(
-                asi_eve_asistente_fk=asistente_existente,
-                asi_eve_evento_fk=self.evento
-            ).exists():
-                raise forms.ValidationError(
-                    f"Ya existe un asistente con la cédula {id} registrado para este evento."
-                )
-        return id
 
-    def clean_username(self):
-        username = self.cleaned_data['username']
-        id = self.cleaned_data.get('id')
-        asistente_existente = Asistente.objects.filter(id=id).first()
-        if asistente_existente:
-            return username
-        if Usuario.objects.filter(username=username).exists():
-            raise forms.ValidationError("Este nombre de usuario ya está registrado.")
-        return username
-
-    def clean_email(self):
-        email = self.cleaned_data['email']
-        id = self.cleaned_data.get('id')
-        asistente_existente = Asistente.objects.filter(id=id).first()
-        if asistente_existente:
-            return email
-        if Usuario.objects.filter(email=email).exists():
-            raise forms.ValidationError("Este correo ya está registrado.")
-        return email
 
     def validate_unique(self):
-        """
-        Sobrescribe la validación de unicidad para que no moleste
-        cuando reutilizamos un usuario existente.
-        """
         exclude = self._get_validation_exclusions()
         try:
             self.instance.validate_unique(exclude=exclude)
         except forms.ValidationError as e:
+            # Eliminamos los errores de unicidad de username y email.
             e.error_dict.pop('username', None)
             e.error_dict.pop('email', None)
+            
+            # Si aún quedan otros errores (ej: first_name, last_name, id), los lanzamos.
             if e.error_dict:
                 raise
 

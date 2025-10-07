@@ -431,6 +431,8 @@ class IngresoEventoAsistenteView(View):
         }
         return render(request, self.template_name, context)
     
+
+    
 ####### MEMORIAS DEL EVENTO PARA USUARIOS ######
 @method_decorator(login_required, name='dispatch')
 class MemoriasAsistenteView(View):
