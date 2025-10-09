@@ -49,7 +49,7 @@ class DashboardEvaluadorView(View):
         relaciones = EvaluadorEvento.objects.filter(eva_eve_evaluador_fk=evaluador).select_related('eva_eve_evento_fk')
 
         # Separar eventos según estado
-        eventos_aprobados = [rel.eva_eve_evento_fk for rel in relaciones if rel.eva_eve_estado != 'Pendiente']
+        eventos_aprobados = [rel.eva_eve_evento_fk for rel in relaciones if rel.eva_eve_estado == 'Aprobado']
         eventos_pendientes = [rel.eva_eve_evento_fk for rel in relaciones if rel.eva_eve_estado == 'Pendiente']
 
         # Aplicar filtros sobre eventos_aprobados
@@ -948,3 +948,32 @@ class MemoriasEvaluadorView(View):
             return redirect('dashboard_user')
         memorias = MemoriaEvento.objects.filter(evento=evento).order_by('-subido_en')
         return render(request, 'memorias_evaluador.html', {'evento': evento, 'memorias': memorias})
+
+
+########## CANCELAR INSCRIPCIÓN AL EVENTO ##########
+
+
+######### CANCELAR PREINSCRIPCIÓN A UN EVENTO ########
+@method_decorator(login_required, name='dispatch')
+class EvaluadorCancelacionView(View):
+    def post(self, request, evento_id):
+        evaluador = get_object_or_404(Evaluador, usuario=request.user)
+        evento = get_object_or_404(Evento, id=evento_id)
+
+        # Buscar inscripción activa del evaluador en este evento
+        inscripcion = EvaluadorEvento.objects.filter(
+            eva_eve_evaluador_fk=evaluador,
+            eva_eve_evento_fk=evento,
+            eva_eve_estado='Aprobado'
+        ).first()
+
+        if not inscripcion:
+            messages.error(request, "❌ No tienes una inscripción activa para este evento.")
+            return redirect('dashboard_evaluador')
+
+        # Cambiar el estado a Cancelado
+        inscripcion.eva_eve_estado = 'Cancelado'
+        inscripcion.save()
+
+        messages.success(request, f"✅ Has cancelado tu inscripción al evento '{evento.eve_nombre}'.")
+        return redirect('dashboard_evaluador')

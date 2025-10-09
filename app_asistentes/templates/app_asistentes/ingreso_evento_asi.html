@@ -49,6 +49,18 @@
                 {% endif %}
             </div>
         </div>
+        <!-- CANCELAR INSCRIPCIÓN -->
+        <div class="col-md-4 d-flex align-items-stretch">
+            <div class="card w-100 text-center shadow-sm p-5 mb-5">
+                <form action="{% url 'cancelar_inscripcion_asistente' evento.id %}" method="post" class="w-100">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger w-100" 
+                            onclick="return confirm('¿Estás seguro de cancelar tu inscripción a este evento?');">
+                        Cancelar inscripción a este evento
+                    </button>
+                </form>
+            </div>
+        </div>
     </div>
 
     <div class="text-start mt-5">

@@ -1,5 +1,5 @@
 from django.utils import timezone
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.urls import reverse
@@ -695,3 +695,65 @@ class MemoriasParticipanteView(View):
             return redirect('dashboard_user')
         memorias = MemoriaEvento.objects.filter(evento=evento).order_by('-subido_en')
         return render(request, 'memorias_participante.html', {'evento': evento, 'memorias': memorias})
+
+@method_decorator(login_required, name='dispatch')  # Puedes reemplazarlo luego por participante_required
+class ParticipanteCancelacionView(View):
+
+    def post(self, request, evento_id):
+        """
+        Permite al participante cancelar su inscripción al evento.
+        Si es líder de grupo, cancela también la inscripción de todos los miembros.
+        """
+
+        # 1️⃣ Obtener el participante logueado
+        participante = get_object_or_404(Participante, usuario=request.user)
+
+        # 2️⃣ Obtener la inscripción activa del participante en ese evento
+        inscripcion = ParticipanteEvento.objects.filter(
+            par_eve_participante_fk=participante,
+            par_eve_evento_fk_id=evento_id
+        ).select_related('par_eve_evento_fk').first()
+
+        if not inscripcion:
+            messages.error(request, "❌ No se encontró tu inscripción activa en este evento.")
+            return redirect('dashboard_participante')
+
+        # 3️⃣ Verificar propiedad
+        if inscripcion.par_eve_participante_fk.usuario != request.user:
+            return HttpResponseForbidden("No tienes permiso para cancelar esta inscripción.")
+
+        # 4️⃣ Si ya estaba cancelada
+        if inscripcion.par_eve_estado.upper() == 'Cancelado':
+            messages.warning(request, "⚠️ Esta inscripción ya se encuentra cancelada.")
+            return redirect('dashboard_participante')
+
+        # 5️⃣ Cancelar inscripción (con manejo de grupos)
+        with transaction.atomic():
+            evento = inscripcion.par_eve_evento_fk
+
+            if inscripcion.es_lider_proyecto:
+                # Caso: LÍDER DE GRUPO
+                miembros = inscripcion.get_todos_miembros_proyecto()
+
+                for miembro in miembros:
+                    if miembro.par_eve_estado.upper() != 'Cancelado':
+                        miembro.par_eve_estado = 'Cancelado'
+                        miembro.save()
+
+                messages.success(
+                    request,
+                    f"✅ Tu proyecto en el evento '{evento.eve_nombre}' ha sido Cancelado. "
+                    "Todos los miembros han sido notificados."
+                )
+            else:
+                # Caso: PARTICIPANTE INDIVIDUAL o MIEMBRO DE GRUPO
+                inscripcion.par_eve_estado = 'Cancelado'
+                inscripcion.save()
+
+                messages.success(
+                    request,
+                    f"✅ Tu inscripción individual al evento '{evento.eve_nombre}' ha sido cancelada."
+                )
+
+        # 6️⃣ Redirigir al dashboard del participante
+        return redirect('dashboard_participante')

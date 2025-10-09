@@ -24,6 +24,9 @@ urlpatterns = [
 
     path('evento/<int:evento_id>/memorias/participante/',views.MemoriasParticipanteView.as_view(),name='memorias_participante'),
 
+    path('cancelar_inscripcion_participante/<int:evento_id>/',views.ParticipanteCancelacionView.as_view(),name='cancelar_inscripcion_participante'),
+
+
 
 
 

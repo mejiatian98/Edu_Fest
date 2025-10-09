@@ -20,7 +20,7 @@ urlpatterns = [
 
     path('evento/<int:evento_id>/memorias/asistente/', views.MemoriasAsistenteView.as_view(),name='memorias_asistente'),
 
-
+    path('cancelar_inscripcion_asistente/<int:evento_id>/',views.AsistenteCancelacionView.as_view(),name='cancelar_inscripcion_asistente'),
 
     
 ]

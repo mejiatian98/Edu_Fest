@@ -67,6 +67,16 @@
         {% endfor %}
     {% endif %}
 
+    <section class="contenedor-mv caja-info">
+        <div class="text-center  caja-mv p-4 ">
+            <p>Acá puedes encontrar el manual de uso de la plataforma</p>
+            <a href="{% static 'manuales/evaluador.pdf' %}" target="_blank" 
+                class="btn btn-sm btn-outline-success document-btn">
+                <i class="fas fa-file-pdf"></i> Manual de uso
+            </a>
+        </div>
+    </section>
+
     
 
     {% if eventos_pendientes %}
@@ -90,15 +100,7 @@
  
     {% block content %}
 
-        <section class="contenedor-mv caja-info">
-            <div class="text-center  caja-mv p-4 ">
-                <p>Acá puedes encontrar el manual de uso de la plataforma</p>
-                <a href="{% static 'manuales/evaluador.pdf' %}" target="_blank" 
-                    class="btn btn-sm btn-outline-success document-btn">
-                    <i class="fas fa-file-pdf"></i> Manual de uso
-                </a>
-            </div>
-        </section>
+        
         {% for evento in eventos %}
         <div class="contenedor-mv caja-info mb-5">
             <div class="caja-mv p-4">

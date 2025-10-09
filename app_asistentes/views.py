@@ -1,3 +1,4 @@
+from datetime import date
 from django.contrib import messages
 from django.urls import reverse
 from django.utils import timezone
@@ -263,7 +264,7 @@ class CambioPasswordAsistenteView(View):
         return redirect('dashboard_asistente')
 
 
-####### CANCELAR PREINSCRIPCION ######
+####### ELIMINAR DATOS ASISTENTE  ######
 @method_decorator(asistente_required, name='dispatch')
 class EliminarAsistenteView(View):
     def get(self, request, asistente_id):
@@ -299,6 +300,50 @@ class EliminarAsistenteView(View):
         messages.success(request, "El Asistente ha sido eliminado correctamente.")
         return redirect('pagina_principal')   
 
+
+######### CANCELAR PREINSCRIPCIÓN A UN EVENTO ########
+@method_decorator(asistente_required, name='dispatch')
+class AsistenteCancelacionView(View):
+    """
+    Permite a un asistente cancelar una preinscripción activa a un evento.
+    """
+    def post(self, request, evento_id):
+        
+        asistente = get_object_or_404(Asistente, usuario=request.user)
+        evento = get_object_or_404(Evento, id=evento_id)
+
+        # 1. Buscar inscripción activa (estado 'Aprobado')
+        inscripcion = AsistenteEvento.objects.filter(
+            asi_eve_asistente_fk=asistente,
+            asi_eve_evento_fk=evento,
+            asi_eve_estado='Aprobado'
+        ).first()
+
+        # CA-10.5: No inscrito
+        if not inscripcion:
+            messages.error(request, "❌ No tienes una inscripción activa para este evento.")
+            return redirect('dashboard_asistente') 
+
+        # CA-10.1: Prohibir la cancelación si el evento ya terminó
+        if evento.eve_fecha_fin < date.today():
+            messages.error(request, "❌ No puedes cancelar una inscripción a un evento que ya finalizó.")
+            return redirect('dashboard_asistente')
+            
+        # CA-10.2: Cambiar el estado a 'Cancelado'
+        inscripcion.asi_eve_estado = 'Cancelado'
+        inscripcion.save()
+
+        # Opcional: Liberar cupo 
+        # Esto solo se hace si 'eve_capacidad' es el contador de cupos disponibles, no la capacidad total.
+        if hasattr(evento, 'eve_capacidad'):
+            evento.eve_capacidad += 1
+            evento.save()
+
+        # CA-10.4: Mensaje de éxito
+        messages.success(request, f"✅ Has cancelado exitosamente tu inscripción al evento '{evento.eve_nombre}'.")
+        return redirect('dashboard_asistente')
+
+    
 
 
 ######### EDITAR PREINSCRIPCION ########

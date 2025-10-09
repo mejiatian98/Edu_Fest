@@ -37,6 +37,8 @@ urlpatterns = [
         
     path('evento/<int:evento_id>/memorias/evaluador/',views.MemoriasEvaluadorView.as_view(),name='memorias_evaluador'),
 
+    path('cancelar_inscripcion_evaluador/<int:evento_id>/',views.EvaluadorCancelacionView.as_view(),name='cancelar_inscripcion_evaluador'),
+
 
     
 ]
