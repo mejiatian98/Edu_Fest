@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.urls import reverse
 from django.utils import timezone
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
@@ -391,7 +392,6 @@ class EditarPreinscripcionAsistenteView(View):
         })
 
 
-
 ####### EVENTO DETALLE ######
 @method_decorator(asistente_required, name='dispatch')
 class EventoDetailView(DetailView):
@@ -399,20 +399,44 @@ class EventoDetailView(DetailView):
     template_name = 'info_evento_evento_asi.html'
     context_object_name = 'evento'
     pk_url_kwarg = 'pk'
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        evento = self.get_object()
-        asistente_id = self.request.session.get('asistente_id')
+
+    def dispatch(self, request, *args, **kwargs):
+        evento = get_object_or_404(self.model, pk=kwargs['pk'])
+        asistente_id = request.session.get('asistente_id')
         
-        # Verificar si el asistente está asignado a este evento
+        # Lógica de bloqueo/redirección (CORRECTA)
         if asistente_id:
             asistente = get_object_or_404(Asistente, id=asistente_id)
             if not AsistenteEvento.objects.filter(asi_eve_asistente_fk=asistente, asi_eve_evento_fk=evento).exists():
-                messages.error(self.request, "No tienes permiso para ver este evento.")
-                return redirect('pagina_principal')
+                messages.error(request, "No tienes permiso para ver este evento.")
+                # Asumo que 'pagina_principal' es el alias de 'dashboard_asistente'
+                return redirect('dashboard_asistente') 
+        
+        return super().dispatch(request, *args, **kwargs)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Obtener el objeto Evento
+        evento = context['evento']
+        
+        # 🌟 PASO DE CORRECCIÓN: CALCULAR LA URL PÚBLICA ABSOLUTA 🌟
+        # 1. Obtener la URL relativa de la vista pública.
+        #    Asumimos que el nombre de la URL pública es 'ver_detalle_evento'
+        relative_url = reverse('ver_info_evento_asi', kwargs={'pk': evento.pk})
+        
+        # 2. Construir la URL absoluta usando request.build_absolute_uri()
+        public_absolute_url = self.request.build_absolute_uri(relative_url)
+        
+        # 3. Añadirla al contexto.
+        context['url_para_compartir'] = public_absolute_url 
 
-        context['asistente'] = asistente if asistente_id else None
+        # Datos adicionales
+        context['asistente'] = get_object_or_404(Asistente, id=self.request.session.get('asistente_id'))
+        
         return context
+
+
 
 
 ####### ACCESO A EVENTO ######

@@ -38,7 +38,6 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from twilio.rest import Client
-from django.conf import settings
 from .utils import enviar_sms
 from app_admin_eventos.models import Evento
 from django.db.models import Sum, Max
@@ -51,6 +50,8 @@ from django.contrib import messages
 from .models import MemoriaEvento
 from django.template.loader import render_to_string
 from xhtml2pdf import pisa
+from django.templatetags.static import static
+from django.contrib.sites.models import Site
 
 from app_admin_eventos.models import Evento, MemoriaEvento
 from app_asistentes.models import AsistenteEvento
@@ -1806,5 +1807,272 @@ class PremiacionView(View):
         messages.success(request, f"✅ Certificados de premiación enviados: {enviados}")
         return redirect('premiacion_admin', evento_id=evento_id)
     
+
+
+#############################--- Notificar ---##############################
+@method_decorator(admin_required, name='dispatch')
+class NotificarEventoView(View):
+    def get(self, request, evento_id):
+        evento = get_object_or_404(Evento, id=evento_id)
+        return render(request, 'notificar_evento_par_asi_eva.html', {'evento': evento})
+    
+
+
+#############################--- Notificar Asistentes ---##############################
+@method_decorator(admin_required, name='dispatch')
+class EnviarNotificacionAsistentesView(View):
+    def get(self, request, evento_id):
+        evento = get_object_or_404(Evento, id=evento_id)
+
+        # 🔹 Mostrar solo asistentes "Pendiente" o "Aprobado"
+        asistentes = AsistenteEvento.objects.filter(
+            asi_eve_evento_fk=evento,
+            asi_eve_estado__in=["Pendiente", "Aprobado"]
+        ).select_related('asi_eve_asistente_fk__usuario')
+
+        return render(request, 'notificar_evento_asi.html', {
+            'evento': evento,
+            'asistentes': asistentes
+        })
+
+    def post(self, request, evento_id):
+        evento = get_object_or_404(Evento, id=evento_id)
+        mensaje = request.POST.get('mensaje', '').strip()
+        seleccionados = request.POST.getlist('asistentes')
+
+        # 📌 Corrección CP-3.2: Validación de mensaje vacío
+        if not mensaje:
+            messages.error(request, "❌ El mensaje no puede estar vacío.")
+            return self.get(request, evento_id) 
+        
+        # 📌 Corrección CP-3.3: Validación de cero asistentes
+        if not seleccionados:
+            messages.warning(request, "⚠️ No seleccionaste ningún asistente.")
+            return self.get(request, evento_id) 
+
+        asistentes = AsistenteEvento.objects.filter(
+            id__in=seleccionados
+        ).select_related('asi_eve_asistente_fk__usuario')
+
+        enviados = 0
+        
+        # 📌 CORRECCIÓN CLAVE CP-3.1: Generación de URLs Absolutas (reinsertado)
+        # Esto evita el NameError y asegura que las URLs no rompan el cuerpo del correo.
+        
+        # 1. URL del Logo (Static)
+        logo_path = static('img/logo.png')
+        logo_url = request.build_absolute_uri(logo_path) 
+        
+        # 2. URL de la Imagen del Evento (Media)
+        img_evento = ''
+        if evento.eve_imagen and evento.eve_imagen.name: 
+            img_evento_path = evento.eve_imagen.url
+            img_evento = request.build_absolute_uri(img_evento_path)
+            
+        # -----------------------------------------------------------
+        
+        for rel in asistentes:
+            asistente = rel.asi_eve_asistente_fk
+            correo = asistente.usuario.email
+
+            subject = f"📢 Notificación sobre el evento: {evento.eve_nombre}"
+            
+            # El cuerpo del correo ahora usa las variables corregidas
+            body = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <p>Hola Asistente {asistente.usuario.first_name} {asistente.usuario.last_name},</p>
+                <p>Tienes una nueva notificación sobre el evento <b>{evento.eve_nombre}</b>:</p>
+                {f'<img src="{img_evento}" alt="Imagen del evento" width="200"><br><br>' if img_evento else ''}
+                <p>{mensaje}</p>
+                <br>
+                <img src="{logo_url}" alt="Logo Event-Soft" width="100"><br><br>
+                <p>¡Gracias por ser parte de nuestro evento!<br>
+                Equipo Event-Soft</p>
+            </body>
+            </html>
+            """
+
+            try:
+                email = EmailMessage(
+                    subject=subject,
+                    body=body,
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[correo],
+                )
+                email.content_subtype = "html"
+                email.send(fail_silently=False) 
+                enviados += 1
+            except Exception as e:
+                # Si deseas ver el error real durante la depuración, usa 'raise e'.
+                # De lo contrario, déjalo con un 'print' (o 'logger') para evitar fallos de servidor.
+                print(f"⚠️ Error al enviar correo a {correo}: {e}") 
+
+        messages.success(request, f"✅ Notificaciones enviadas a {enviados} asistentes.")
+        return redirect('notificar_asi', evento_id=evento_id)
+
+
+#############################--- Notificar Evaluadores ---##############################
+@method_decorator(admin_required, name='dispatch')
+class EnviarNotificacionEvaluadoresView(View):
+    def get(self, request, evento_id):
+        evento = get_object_or_404(Evento, id=evento_id)
+
+        # 🔹 Mostrar solo evaluadores "Pendiente" o "Aprobado"
+        evaluador = EvaluadorEvento.objects.filter(
+            eva_eve_evento_fk=evento,
+            eva_eve_estado__in=["Pendiente", "Aprobado"]
+        ).select_related('eva_eve_evaluador_fk__usuario')
+
+        return render(request, 'notificar_evento_eva.html', {
+            'evento': evento,
+            'evaluador': evaluador
+        })
+
+    def post(self, request, evento_id):
+        evento = get_object_or_404(Evento, id=evento_id)
+        mensaje = request.POST.get('mensaje', '').strip()
+        seleccionados = request.POST.getlist('evaluador')
+
+        if not mensaje:
+            messages.error(request, "❌ El mensaje no puede estar vacío.")
+            return redirect('notificar_eva', evento_id=evento_id)
+
+        if not seleccionados:
+            messages.warning(request, "⚠️ No seleccionaste ningún asistente.")
+            return redirect('notificar_eva', evento_id=evento_id)
+
+        evaluador = EvaluadorEvento.objects.filter(
+            id__in=seleccionados
+        ).select_related('eva_eve_evaluador_fk__usuario')
+
+        enviados = 0
+        domain = Site.objects.get_current().domain
+        logo_url = f"https://{domain}{static('img/logo.png')}"
+        img_evento = evento.eve_imagen.url if evento.eve_imagen else ''
+
+        for rel in evaluador:
+            evaluador = rel.eva_eve_evaluador_fk
+            correo = evaluador.usuario.email
+
+            subject = f"📢 Notificación sobre el evento: {evento.eve_nombre}"
+            body = f"""
+            <html>
+            <body style="font-family: Arial, sans-serif; color: #333;">
+                <p>Hola Evaluador {evaluador.usuario.first_name} {evaluador.usuario.last_name},</p>
+                <p>Tienes una nueva notificación sobre el evento <b>{evento.eve_nombre}</b>:</p>
+                {'<img src="' + img_evento + '" alt="Imagen del evento" width="200"><br><br>' if img_evento else ''}
+                <p>{mensaje}</p>
+                <br>
+                <img src="{logo_url}" alt="Logo Event-Soft" width="100"><br><br>
+                <p>¡Gracias por ser parte de nuestro evento!<br>
+                Equipo Event-Soft</p>
+            </body>
+            </html>
+            """
+
+            try:
+                email = EmailMessage(
+                    subject=subject,
+                    body=body,
+                    from_email=DEFAULT_FROM_EMAIL,
+                    to=[correo],
+                )
+                email.content_subtype = "html"
+                email.send(fail_silently=False)
+                enviados += 1
+            except Exception as e:
+                print(f"⚠️ Error al enviar correo a {correo}: {e}")
+
+        messages.success(request, f"✅ Notificaciones enviadas a {enviados} evaluador.")
+        return redirect('notificar_eva', evento_id=evento_id)
+
+
+
+#############################--- Notificar Participantes ---##############################
+
+@method_decorator(admin_required, name='dispatch')
+class EnviarNotificacionParticipantesView(View):
+    def get(self, request, evento_id):
+        evento = get_object_or_404(Evento, id=evento_id)
+
+        # 🔹 Solo líderes o participantes individuales (no miembros de grupo)
+        participantes = ParticipanteEvento.objects.filter(
+            par_eve_evento_fk=evento,
+            par_eve_proyecto_principal__isnull=True,  # Solo líderes o individuales
+            par_eve_estado__in=["Pendiente", "Aprobado"]
+        ).select_related('par_eve_participante_fk__usuario')
+
+        return render(request, 'notificar_evento_par.html', {
+            'evento': evento,
+            'participantes': participantes
+        })
+
+    def post(self, request, evento_id):
+        evento = get_object_or_404(Evento, id=evento_id)
+        mensaje = request.POST.get('mensaje', '').strip()
+        seleccionados = request.POST.getlist('participantes')
+
+        if not mensaje:
+            messages.error(request, "❌ El mensaje no puede estar vacío.")
+            return redirect('notificar_par', evento_id=evento_id)
+
+        if not seleccionados:
+            messages.warning(request, "⚠️ No seleccionaste ningún participante.")
+            return redirect('notificar_par', evento_id=evento_id)
+
+        seleccionados_qs = ParticipanteEvento.objects.filter(
+            id__in=seleccionados
+        ).select_related('par_eve_participante_fk__usuario')
+
+        enviados = 0
+        domain = Site.objects.get_current().domain
+        logo_url = f"https://{domain}{static('img/logo.png')}"
+        img_evento = evento.eve_imagen.url if evento.eve_imagen else ''
+
+        for rel in seleccionados_qs:
+            # Si es líder de grupo, obtener todos los miembros
+            miembros = []
+            if rel.par_eve_es_grupo:
+                miembros = rel.get_todos_miembros_proyecto()
+            else:
+                miembros = [rel]  # participante individual
+
+            for miembro in miembros:
+                participante = miembro.par_eve_participante_fk
+                correo = participante.usuario.email
+
+                subject = f"📢 Notificación sobre el evento: {evento.eve_nombre}"
+                body = f"""
+                <html>
+                <body style="font-family: Arial, sans-serif; color: #333;">
+                    <p>Hola Exponente {participante.usuario.first_name} {participante.usuario.last_name},</p>
+                    <p>Tienes una nueva notificación sobre el evento <b>{evento.eve_nombre}</b>:</p>
+                    {'<img src="' + img_evento + '" alt="Imagen del evento" width="200"><br><br>' if img_evento else ''}
+                    <p>{mensaje}</p>
+                    <br>
+                    <img src="{logo_url}" alt="Logo Event-Soft" width="100"><br><br>
+                    <p>¡Gracias por ser parte de nuestro evento!<br>
+                    Equipo Event-Soft</p>
+                </body>
+                </html>
+                """
+
+                try:
+                    email = EmailMessage(
+                        subject=subject,
+                        body=body,
+                        from_email=DEFAULT_FROM_EMAIL,
+                        to=[correo],
+                    )
+                    email.content_subtype = "html"
+                    email.send(fail_silently=False)
+                    enviados += 1
+                except Exception as e:
+                    print(f"⚠️ Error al enviar correo a {correo}: {e}")
+
+        messages.success(request, f"✅ Notificaciones enviadas a {enviados} participantes (incluyendo grupos).")
+        return redirect('notificar_par', evento_id=evento_id)
+
 
 

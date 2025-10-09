@@ -72,6 +72,15 @@ urlpatterns = [
 
     path("eventos/<int:evento_id>/previsualizar/<str:tipo>/<int:persona_id>/",views.previsualizar_certificado,name="previsualizar_certificado"),
 
+    #Notificar sobre eventos relevantes del evento
+    path("eventos/<int:evento_id>/notificar/",views.NotificarEventoView.as_view(),name="notificar_evento"),
+
+    path("eventos/<int:evento_id>/notificar/asistentes/",views.EnviarNotificacionAsistentesView.as_view(),name="notificar_asi"),
+    path("eventos/<int:evento_id>/notificar/evaluador/",views.EnviarNotificacionEvaluadoresView.as_view(),name="notificar_eva"),
+    path("eventos/<int:evento_id>/notificar/exponentes/",views.EnviarNotificacionParticipantesView.as_view(),name="notificar_par"),
+
+    
+
 
 
 
