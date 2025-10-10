@@ -4,83 +4,64 @@ from django import forms
 from app_usuarios.models import Usuario, Participante
 from .models import ParticipanteEvento
 
+
 class ParticipanteForm(forms.ModelForm):
+    # Campo para la cédula (id)
     id = forms.IntegerField(
         label="Cédula",
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ingresa tu número de cédula'})
+        widget=forms.NumberInput(
+            attrs={'class': 'form-control', 'placeholder': 'Ingresa tu número de cédula'}
+        )
     )
-    
+
+    # Campos de Usuario
+    username = forms.CharField(
+        label="Nombre de usuario",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'})
+    )
+    email = forms.EmailField(
+        label="Correo electrónico",
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@email.com'})
+    )
+    telefono = forms.CharField(
+        label="Teléfono",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono'})
+    )
+    first_name = forms.CharField(
+        label="Nombre",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu nombre'})
+    )
+    last_name = forms.CharField(
+        label="Apellido",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu apellido'})
+    )
+
     class Meta:
-        model = Usuario
-        fields = ['id', 'username', 'email', 'telefono', 'first_name', 'last_name']
-        widgets = {
-            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@email.com'}),
-            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono'}),
-            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu nombre'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu apellido'}),
-        }
+        model = Participante
+        fields = ['id']  # El único campo que pertenece directamente al modelo Participante
 
     def __init__(self, *args, **kwargs):
-        # Extraer el evento si se pasa como parámetro
         self.evento = kwargs.pop('evento', None)
         super().__init__(*args, **kwargs)
 
+    def validate_unique(self):
+        exclude = self._get_validation_exclusions()
+        try:
+            self.instance.validate_unique(exclude=exclude)
+        except forms.ValidationError as e:
+            # Eliminamos errores de unicidad ajenos al flujo actual
+            e.error_dict.pop('id', None)
+            if e.error_dict:
+                raise
+
+
     def clean_id(self):
-        id = self.cleaned_data['id']
-        
-        # Solo validar si hay un evento específico
-        if self.evento:
-            # Verificar si ya está registrado en este evento específico
-            participante_existente = Participante.objects.filter(id=id).first()
-            if participante_existente:
-                if ParticipanteEvento.objects.filter(
-                    par_eve_participante_fk=participante_existente,
-                    par_eve_evento_fk=self.evento
-                ).exists():
-                    raise forms.ValidationError(
-                        f"Ya existe un participante con la cédula {id} registrado para este evento."
-                    )
-        
-        return id
+        id_value = self.cleaned_data['id']
+        return str(id_value).strip()
 
-    def clean_username(self):
-        username = self.cleaned_data['username']
-        
-        # Solo validar username para nuevos usuarios
-        if self.evento:
-            # Verificar si existe un participante con la cédula del formulario
-            id = self.cleaned_data.get('id')
-            if id:
-                participante_existente = Participante.objects.filter(id=id).first()
-                if participante_existente:
-                    # Si el participante existe, no validar username
-                    return username
-        
-        # Validar username solo para nuevos usuarios
-        if Usuario.objects.filter(username=username).exists():
-            raise forms.ValidationError("Este nombre de usuario ya está registrado.")
-        
-        return username
 
-    def clean_email(self):
-        email = self.cleaned_data['email']
-        
-        # Solo validar email para nuevos usuarios
-        if self.evento:
-            # Verificar si existe un participante con la cédula del formulario
-            id = self.cleaned_data.get('id')
-            if id:
-                participante_existente = Participante.objects.filter(id=id).first()
-                if participante_existente:
-                    # Si el participante existe, no validar email
-                    return email
-        
-        # Validar email solo para nuevos usuarios
-        if Usuario.objects.filter(email=email).exists():
-            raise forms.ValidationError("Este correo ya está registrado.")
-        
-        return email
+
 
 
 # Agregar la clase que falta

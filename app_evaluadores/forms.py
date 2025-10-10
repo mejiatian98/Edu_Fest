@@ -4,64 +4,61 @@ from app_evaluadores.models import EvaluadorEvento
 
 
 class EvaluadorForm(forms.ModelForm):
-    id = forms.IntegerField(
+    cedula = forms.CharField(
         label="Cédula",
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ingresa tu número de cédula'})
+        max_length=20,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingresa tu número de cédula'
+            }
+        )
+    )
+
+    username = forms.CharField(
+        label="Nombre de usuario",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'})
+    )
+    email = forms.EmailField(
+        label="Correo electrónico",
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@email.com'})
+    )
+    telefono = forms.CharField(
+        label="Teléfono",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono'})
+    )
+    first_name = forms.CharField(
+        label="Nombre",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu nombre'})
+    )
+    last_name = forms.CharField(
+        label="Apellido",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu apellido'})
     )
 
     class Meta:
-        model = Usuario
-        fields = ['id', 'username', 'email', 'telefono', 'first_name', 'last_name']
-        widgets = {
-            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@email.com'}),
-            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono'}),
-            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu nombre'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu apellido'}),
-        }
+        model = Evaluador
+        fields = ['cedula']
 
     def __init__(self, *args, **kwargs):
-        self.evento = kwargs.pop('evento', None)  # 🔹 Guardamos el evento que viene desde la vista
+        self.evento = kwargs.pop('evento', None)
         super().__init__(*args, **kwargs)
 
-    def clean_id(self):
-        """
-        Verifica que la cédula no esté repetida en el mismo evento.
-        Pero permite inscribirse en diferentes eventos con la misma cédula.
-        """
-        id = self.cleaned_data['id']
-        if self.evento:
-            evaluador_existente = Evaluador.objects.filter(id=id).first()
-            if evaluador_existente and EvaluadorEvento.objects.filter(
-                eva_eve_evaluador_fk=evaluador_existente,
-                eva_eve_evento_fk=self.evento
-            ).exists():
-                raise forms.ValidationError(
-                    f"Ya existe un evaluador con la cédula {id} registrado para este evento."
-                )
-        return id
-
-    def clean_username(self):
-        """
-        Permite reutilizar el mismo username si ya existe en la BD.
-        Solo se bloquea en la lógica de la vista si intenta inscribirse en el mismo evento.
-        """
-        username = self.cleaned_data['username']
-        return username
-
-    def clean_email(self):
-        """
-        Igual que con username: el mismo correo puede ser usado en diferentes eventos.
-        """
-        email = self.cleaned_data['email']
-        return email
-
     def validate_unique(self):
-        """
-        Sobrescribimos la validación de unicidad para que Django no bloquee
-        por username/email duplicados en la tabla Usuario.
-        """
-        pass
+        exclude = self._get_validation_exclusions()
+        try:
+            self.instance.validate_unique(exclude=exclude)
+        except forms.ValidationError as e:
+            # eliminamos error de unicidad en cédula, no id
+            e.error_dict.pop('cedula', None)
+            if e.error_dict:
+                raise
+
+
+    def clean_id(self):
+        id_value = self.cleaned_data['cedula']
+        return str(id_value).strip()
 
 
 

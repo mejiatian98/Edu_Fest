@@ -1,43 +1,58 @@
 from django import forms
 from app_usuarios.models import Usuario, Asistente
-from .models import AsistenteEvento
+
 
 class AsistenteForm(forms.ModelForm):
-    id = forms.IntegerField(
+    cedula = forms.CharField(
         label="Cédula",
-        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ingresa tu número de cédula'})
+        max_length=20,
+        widget=forms.TextInput(
+            attrs={
+                'class': 'form-control',
+                'placeholder': 'Ingresa tu número de cédula'
+            }
+        )
+    )
+
+    username = forms.CharField(
+        label="Nombre de usuario",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'})
+    )
+    email = forms.EmailField(
+        label="Correo electrónico",
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@email.com'})
+    )
+    telefono = forms.CharField(
+        label="Teléfono",
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono'})
+    )
+    first_name = forms.CharField(
+        label="Nombre",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu nombre'})
+    )
+    last_name = forms.CharField(
+        label="Apellido",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu apellido'})
     )
 
     class Meta:
-        model = Usuario
-        fields = ['id', 'username', 'email', 'telefono', 'first_name', 'last_name']
-        widgets = {
-            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@email.com'}),
-            'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono'}),
-            'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu nombre'}),
-            'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu apellido'}),
-        }
+        model = Asistente
+        fields = ['cedula']
 
     def __init__(self, *args, **kwargs):
         self.evento = kwargs.pop('evento', None)
         super().__init__(*args, **kwargs)
-
-
 
     def validate_unique(self):
         exclude = self._get_validation_exclusions()
         try:
             self.instance.validate_unique(exclude=exclude)
         except forms.ValidationError as e:
-            # Eliminamos los errores de unicidad de username y email.
-            e.error_dict.pop('username', None)
-            e.error_dict.pop('email', None)
-            
-            # Si aún quedan otros errores (ej: first_name, last_name, id), los lanzamos.
+            # eliminamos error de unicidad en cédula, no id
+            e.error_dict.pop('cedula', None)
             if e.error_dict:
                 raise
-
 
 
 

@@ -40,8 +40,8 @@ INSTALLED_APPS = [
     'app_usuarios.apps.AppUsuariosConfig',
     'app_admin_eventos',
     'app_asistentes',
-    'app_evaluadores',
     'app_participantes',
+    'app_evaluadores',
     
 ]
 

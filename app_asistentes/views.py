@@ -86,6 +86,9 @@ class DashboardAsistenteView(View):
         }
         return render(request, self.template_name, context)
 
+
+
+
 ###### CREACION DE ASISTENTE ######
 class AsistenteCreateView(View):
     def get(self, request, pk):
@@ -99,16 +102,18 @@ class AsistenteCreateView(View):
         })
 
     def post(self, request, pk):
-        form = AsistenteForm(request.POST, request.FILES)
         evento = get_object_or_404(Evento, pk=pk)
+        form = AsistenteForm(request.POST, request.FILES)
         es_de_pago = evento.eve_tienecosto.lower() == "de pago"
 
+        # 🔹 Validar capacidad
         if evento.eve_capacidad <= 0:
             messages.error(request, "No hay más cupos disponibles para este evento.")
             return render(request, 'crear_asistente.html', {
                 'form': form, 'evento': evento, 'es_de_pago': es_de_pago
             })
 
+        # 🔹 Validar comprobante si es de pago
         if es_de_pago and not request.FILES.get('asi_eve_soporte'):
             messages.error(request, "Debe cargar el comprobante de pago para este evento.")
             return render(request, 'crear_asistente.html', {
@@ -116,26 +121,26 @@ class AsistenteCreateView(View):
             })
 
         if form.is_valid():
-            id = form.cleaned_data['id']
+            # 🪪 Datos del formulario
+            cedula = form.cleaned_data['cedula']
             first_name = form.cleaned_data['first_name']
             last_name = form.cleaned_data['last_name']
             email = form.cleaned_data['email']
             telefono = form.cleaned_data['telefono']
             username = form.cleaned_data['username']
 
-            # 🔹 Validar si ya existe inscrito al mismo evento
+            # 🔹 Verificar si ya está inscrito en el mismo evento
             if AsistenteEvento.objects.filter(
                 asi_eve_evento_fk=evento,
-                asi_eve_asistente_fk__usuario__email=email
+                asi_eve_asistente_fk__cedula=cedula
             ).exists():
                 messages.error(request, "Ya estás inscrito como asistente en este evento.")
                 return render(request, 'crear_asistente.html', {
                     'form': form, 'evento': evento, 'es_de_pago': es_de_pago
                 })
 
-            # 🔹 Permitir múltiples eventos, pero validar correo único global
+            # 🔹 Crear o reutilizar usuario
             if not Usuario.objects.filter(email=email).exists():
-                # Crear nuevo usuario solo si no existe
                 password_plana = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
                 usuario = Usuario.objects.create(
                     username=username,
@@ -151,18 +156,18 @@ class AsistenteCreateView(View):
                     password=make_password(password_plana),
                 )
 
-                # 🔹 Crear el asistente sin pasar 'id', Django lo genera automáticamente
-                asistente = Asistente.objects.create(usuario=usuario)
+                # ✅ Aquí solo guardamos cedula y usuario (el id será autogenerado)
+                asistente = Asistente.objects.create(cedula=cedula, usuario=usuario)
 
             else:
-                # Reutilizar usuario existente
                 usuario = Usuario.objects.get(email=email)
-                # 🔹 Reutilizar o crear el Asistente asociado sin duplicar la PK
-                asistente, _ = Asistente.objects.get_or_create(usuario=usuario)
+                # ✅ Si ya existe, lo buscamos o creamos sin tocar el ID
+                asistente, _ = Asistente.objects.get_or_create(
+                    cedula=cedula, usuario=usuario
+                )
+                password_plana = "Tu contraseña actual"
 
-                password_plana = "Tu contraseña actual"  
- 
-
+            # 🔹 Datos de inscripción
             documento_pago = request.FILES.get('asi_eve_soporte') if es_de_pago else None
             estado = "Pendiente" if es_de_pago else "Aprobado"
 
@@ -178,9 +183,10 @@ class AsistenteCreateView(View):
                 buffer = BytesIO()
                 qr.save(buffer, format='PNG')
                 qr_bytes = buffer.getvalue()
-                qr_filename = f"qr_{id}.png"
+                qr_filename = f"qr_{cedula}.png"
                 qr_img_file = ContentFile(qr_bytes, name=qr_filename)
 
+            # 🔹 Guardar la inscripción
             AsistenteEvento.objects.create(
                 asi_eve_evento_fk=evento,
                 asi_eve_asistente_fk=asistente,
@@ -191,10 +197,12 @@ class AsistenteCreateView(View):
                 asi_eve_fecha_hora=timezone.now(),
             )
 
+            # 🔹 Reducir capacidad
             evento.eve_capacidad -= 1
             evento.save(update_fields=['eve_capacidad'])
 
-            subject = f"Datos de acceso - Evento \"{evento.eve_nombre}\""
+            # 🔹 Enviar correo
+            subject = f"🎟️ Datos de acceso - Evento \"{evento.eve_nombre}\""
             body = (
                 f"Hola Asistente {first_name},\n\n"
                 f"Te has registrado exitosamente al evento \"{evento.eve_nombre}\".\n\n"
@@ -231,7 +239,6 @@ class AsistenteCreateView(View):
         })
 
 
-
 ####### CAMBIO PASSWORD ASISTENTE ######
 @method_decorator(asistente_required, name='dispatch')
 class CambioPasswordAsistenteView(View):
@@ -264,24 +271,40 @@ class CambioPasswordAsistenteView(View):
         return redirect('dashboard_asistente')
 
 
-####### ELIMINAR DATOS ASISTENTE  ######
+####### ELIMINAR DATOS ASISTENTE ######
 @method_decorator(asistente_required, name='dispatch')
 class EliminarAsistenteView(View):
     def get(self, request, asistente_id):
         asistente = get_object_or_404(Asistente, id=asistente_id)
         usuario = asistente.usuario
 
-        # Obtener el evento asignado, si lo hay
-        asistente_evento = AsistenteEvento.objects.filter(asi_eve_asistente_fk=asistente).first()
-        nombre_evento = asistente_evento.asi_eve_evento_fk.eve_nombre if asistente_evento else "uno de nuestros eventos"
+        # 🔹 Buscar todas las inscripciones del asistente
+        inscripciones = AsistenteEvento.objects.filter(asi_eve_asistente_fk=asistente)
 
-        # Enviar correo antes de eliminar
+        # 🔹 Verificar si tiene inscripciones activas (no canceladas)
+        if inscripciones.exists():
+            # ¿Hay alguna inscripción que NO esté cancelada?
+            tiene_inscripciones_activas = inscripciones.exclude(asi_eve_estado="Cancelado").exists()
+
+            if tiene_inscripciones_activas:
+                messages.error(
+                    request,
+                    "❌ No puedes eliminar tu cuenta mientras tengas inscripciones activas. "
+                    "Por favor, cancela todas tus inscripciones antes de eliminar tu cuenta."
+                )
+                return redirect('pagina_principal')
+
+        # 🔹 Obtener el último evento cancelado (para el correo)
+        ultimo_evento = inscripciones.first()
+        nombre_evento = ultimo_evento.asi_eve_evento_fk.eve_nombre if ultimo_evento else "uno de nuestros eventos"
+
+        # 🔹 Enviar correo antes de eliminar
         if usuario.email:
             send_mail(
                 subject='Notificación de eliminación de cuenta como Asistente',
                 message=(
                     f'Estimado/a {usuario.first_name},\n\n'
-                    f'Le informamos que ha sido eliminado como Asistente del evento "{nombre_evento}". '
+                    f'Le informamos que su cuenta ha sido eliminada correctamente de Event-Soft.\n\n'
                     f'Todos sus datos han sido eliminados por razones de seguridad.\n\n'
                     f'Si tiene preguntas o requiere mayor información, no dude en contactarnos.\n\n'
                     f'Atentamente,\nEquipo de organización de eventos.'
@@ -291,26 +314,32 @@ class EliminarAsistenteView(View):
                 fail_silently=False
             )
 
-        # Cerrar sesión antes de eliminar
+        # 🔹 Cerrar sesión antes de eliminar
         request.session.flush()
 
-        # Eliminar al usuario, lo cual también eliminará al participante
+        # 🔹 Eliminar al usuario (esto elimina en cascada al asistente)
         usuario.delete()
 
-        messages.success(request, "El Asistente ha sido eliminado correctamente.")
-        return redirect('pagina_principal')   
+        messages.success(request, "✅ Tu cuenta ha sido eliminada correctamente.")
+        return redirect('pagina_principal')
 
 
-######### CANCELAR PREINSCRIPCIÓN A UN EVENTO ########
+
+####### CANCELAR EVENTO ASISTENTE  ######
 @method_decorator(asistente_required, name='dispatch')
 class AsistenteCancelacionView(View):
     """
     Permite a un asistente cancelar una preinscripción activa a un evento.
+    El cupo se libera explícitamente al aumentar la capacidad del evento.
     """
     def post(self, request, evento_id):
-        
         asistente = get_object_or_404(Asistente, usuario=request.user)
         evento = get_object_or_404(Evento, id=evento_id)
+
+        # CA-10.1: Prohibir la cancelación si el evento ya terminó
+        if evento.eve_fecha_fin < timezone.localdate():
+            messages.error(request, "❌ No puedes cancelar una inscripción a un evento que ya finalizó.")
+            return redirect('dashboard_asistente')
 
         # 1. Buscar inscripción activa (estado 'Aprobado')
         inscripcion = AsistenteEvento.objects.filter(
@@ -319,31 +348,26 @@ class AsistenteCancelacionView(View):
             asi_eve_estado='Aprobado'
         ).first()
 
-        # CA-10.5: No inscrito
+        # CA-10.5: No inscrito o no tiene estado 'Aprobado'
         if not inscripcion:
             messages.error(request, "❌ No tienes una inscripción activa para este evento.")
-            return redirect('dashboard_asistente') 
-
-        # CA-10.1: Prohibir la cancelación si el evento ya terminó
-        if evento.eve_fecha_fin < date.today():
-            messages.error(request, "❌ No puedes cancelar una inscripción a un evento que ya finalizó.")
             return redirect('dashboard_asistente')
-            
-        # CA-10.2: Cambiar el estado a 'Cancelado'
+
+        # 2. Cambiar el estado a 'Cancelado'
         inscripcion.asi_eve_estado = 'Cancelado'
-        inscripcion.save()
+        inscripcion.save(update_fields=['asi_eve_estado'])
 
-        # Opcional: Liberar cupo 
-        # Esto solo se hace si 'eve_capacidad' es el contador de cupos disponibles, no la capacidad total.
-        if hasattr(evento, 'eve_capacidad'):
-            evento.eve_capacidad += 1
-            evento.save()
+        # 3. 🔹 Liberar cupo explícitamente
+        evento.eve_capacidad += 1
+        evento.save(update_fields=['eve_capacidad'])
 
-        # CA-10.4: Mensaje de éxito
-        messages.success(request, f"✅ Has cancelado exitosamente tu inscripción al evento '{evento.eve_nombre}'.")
+        # 4. Mensaje de éxito
+        messages.success(
+            request,
+            f"✅ Has cancelado exitosamente tu inscripción al evento '{evento.eve_nombre}'. "
+            f"Tu cupo ha sido liberado."
+        )
         return redirect('dashboard_asistente')
-
-    
 
 
 ######### EDITAR PREINSCRIPCION ########

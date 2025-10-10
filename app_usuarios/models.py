@@ -19,28 +19,32 @@ class Usuario(AbstractUser):
 
 
 class Asistente(models.Model):
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
+    cedula = models.CharField(max_length=20, unique=True) 
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE) 
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Asistente"
 
 
 class Participante(models.Model):
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
+    cedula = models.CharField(max_length=20, unique=True) 
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE) 
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Participante"
 
 
 class Evaluador(models.Model):
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
+    cedula = models.CharField(max_length=20, unique=True) 
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE) 
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Evaluador"
 
 
 class AdministradorEvento(models.Model):
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE)
+    cedula = models.CharField(max_length=20, unique=True) 
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE) 
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Administrador de Evento"

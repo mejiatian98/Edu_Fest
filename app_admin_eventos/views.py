@@ -3,7 +3,6 @@ import os
 import random
 import string
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
 from django.views import View
 from django.views.generic import CreateView, ListView, UpdateView, DeleteView, DetailView
 from django.urls import reverse, reverse_lazy
@@ -19,7 +18,7 @@ from django.views.generic.edit import FormView
 
 from app_usuarios.models import Participante, Asistente, Evaluador
 from django.contrib import messages
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import get_object_or_404, render, redirect
 from django.utils.timezone import now, timedelta
 from datetime import timedelta
 from django.core.mail import send_mail
@@ -166,6 +165,9 @@ class CambioPasswordAdminView(View):
 
         messages.success(request, "✅ Contraseña cambiada correctamente.")
         return redirect('dashboard_admin')
+
+
+        
     
 
 ############################## --- Editar Administrador ---##############################
@@ -1285,33 +1287,37 @@ class CriterioAgregadosListView(ListView):
 @method_decorator(admin_required, name='dispatch')
 class VerPodioParticipantesAdminView(View):
     def get(self, request, evento_id):
-        
-        id = self.request.session.get('id')
-        administrador = get_object_or_404(AdministradorEvento, pk=id)
-        
-        # Obtener el evento correspondiente
+        usuario = request.user
+        administrador = get_object_or_404(AdministradorEvento, usuario=usuario)
+
+        # ✅ Obtener evento
         evento = get_object_or_404(Evento, pk=evento_id)
 
-        # Verificamos que el administrador logueado sea el encargado de este evento
+        # ✅ Validar que el evento pertenezca al admin logueado
         if evento.eve_administrador_fk != administrador:
-            return redirect('acceso_denegado')  # Redirigir a la página de acceso denegado si no es el administrador
+            return redirect('acceso_denegado')
 
-        # Obtener los participantes del evento con sus calificaciones
-        participantes_evento = ParticipanteEvento.objects.filter(par_eve_evento_fk=evento_id).select_related('par_eve_participante_fk')
+        # ✅ Obtener participantes con sus calificaciones
+        participantes_evento = ParticipanteEvento.objects.filter(
+            par_eve_evento_fk=evento
+        ).select_related('par_eve_participante_fk__usuario')
 
-        # Filtrar solo aquellos que tienen calificación
-        participantes_calificados = [
-            pe for pe in participantes_evento if pe.calificacion is not None
-        ]
+        # ✅ Filtrar los que tienen calificación
+        participantes_calificados = [pe for pe in participantes_evento if pe.calificacion is not None]
 
-        # Ordenar por calificación descendente
+        # ✅ Ordenar de mayor a menor
         participantes_calificados.sort(key=lambda x: x.calificacion, reverse=True)
 
-        return render(request, 'ver_notas_participantes_admin.html', {
-            'participantes': participantes_calificados,
+        # ✅ (Opcional) Mostrar solo el top 3
+        # participantes_calificados = participantes_calificados[:3]
+
+        context = {
             'evento': evento,
-            'administrador': administrador
-        })
+            'administrador': administrador,
+            'participantes': participantes_calificados,
+        }
+
+        return render(request, 'ver_notas_participantes_admin.html', context)
 
 
 ########## VER NOTAS DE PARTICIPANTES #########

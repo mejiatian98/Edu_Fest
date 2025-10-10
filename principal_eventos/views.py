@@ -230,7 +230,7 @@ class MenuPrincipalVisitanteView(ListView):
     def get_queryset(self):
         today = now().date()
 
-        # Actualizar eventos cuyo eve_fecha_fin es hoy y están en estado 'publicado'
+        # Actualizar eventos cuyo eve_fecha_fin es hoy y están en estado 'Publicado'
         Evento.objects.filter(
             eve_estado__iexact='Publicado',
             eve_fecha_fin=today
@@ -238,7 +238,7 @@ class MenuPrincipalVisitanteView(ListView):
 
         # Filtrar eventos que están publicados o finalizados
         eventos = Evento.objects.filter(
-            Q(eve_estado__iexact='publicado') | Q(eve_estado__iexact='Finalizado')
+            Q(eve_estado__iexact='Publicado') | Q(eve_estado__iexact='Finalizado')
         ).order_by('-eve_fecha_inicio')
 
         # Filtros personalizados

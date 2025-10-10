@@ -153,7 +153,7 @@ class EvaluadorCreateView(View):
         form = EvaluadorForm(request.POST, request.FILES, evento=evento)
 
         if form.is_valid():
-            id = form.cleaned_data['id']
+            cedula = form.cleaned_data['cedula']
             username = form.cleaned_data['username']
             first_name = form.cleaned_data['first_name']
             last_name = form.cleaned_data['last_name']
@@ -188,18 +188,28 @@ class EvaluadorCreateView(View):
                 # Usuario ya existe → usa su contraseña actual
                 password_plana = None
 
-            # 🔹 Obtener o crear Evaluador asociado al usuario
-            evaluador, _ = Evaluador.objects.get_or_create(
-                usuario=usuario,
-                defaults={"id": id}
-            )
+            # 🔹 Verificar si ya existe un Evaluador con ese usuario
+            evaluador, evaluador_creado = Evaluador.objects.get_or_create(usuario=usuario)
 
-            # 🔹 Verificar si ya está inscrito en este evento
-            if EvaluadorEvento.objects.filter(eva_eve_evaluador_fk=evaluador, eva_eve_evento_fk=evento).exists():
+            if evaluador_creado:
+                # ✅ Solo asignamos la cédula, el ID se autogenera
+                evaluador.cedula = cedula
+                evaluador.save(update_fields=["cedula"])
+            else:
+                # Si el evaluador ya existe, verificar que la cédula coincida
+                if evaluador.cedula != cedula:
+                    messages.error(request, "La cédula ingresada no coincide con el evaluador registrado.")
+                    return render(request, 'crear_evaluador.html', {'form': form, 'evento': evento})
+
+            # 🔹 Verificar si ya está inscrito en este evento (permitir otros eventos)
+            if EvaluadorEvento.objects.filter(
+                eva_eve_evaluador_fk=evaluador,
+                eva_eve_evento_fk=evento
+            ).exists():
                 messages.warning(request, "Este evaluador ya está registrado en este evento.")
                 return redirect('pagina_principal')
 
-            # 🔹 Crear relación con el evento
+            # 🔹 Crear relación EvaluadorEvento
             EvaluadorEvento.objects.create(
                 eva_eve_evaluador_fk=evaluador,
                 eva_eve_evento_fk=evento,
@@ -208,7 +218,7 @@ class EvaluadorCreateView(View):
                 eva_eve_documento=documento
             )
 
-            # 🔹 Enviar correo SIEMPRE (diferente mensaje si es nuevo o existente)
+            # 🔹 Enviar correo (diferente según si el usuario es nuevo o no)
             try:
                 if creado:
                     mensaje = (
@@ -232,7 +242,7 @@ class EvaluadorCreateView(View):
                     )
 
                 send_mail(
-                    subject="Registro exitoso a Event-Soft",
+                    subject=f"🎟️ Datos de acceso - Evento \"{evento.eve_nombre}\"",
                     message=mensaje,
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[usuario.email],
@@ -953,7 +963,6 @@ class MemoriasEvaluadorView(View):
 ########## CANCELAR INSCRIPCIÓN AL EVENTO ##########
 
 
-######### CANCELAR PREINSCRIPCIÓN A UN EVENTO ########
 @method_decorator(login_required, name='dispatch')
 class EvaluadorCancelacionView(View):
     def post(self, request, evento_id):

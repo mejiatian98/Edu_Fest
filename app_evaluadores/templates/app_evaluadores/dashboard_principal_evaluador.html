@@ -67,38 +67,40 @@
         {% endfor %}
     {% endif %}
 
-    <section class="contenedor-mv caja-info">
-        <div class="text-center  caja-mv p-4 ">
-            <p>Acá puedes encontrar el manual de uso de la plataforma</p>
-            <a href="{% static 'manuales/evaluador.pdf' %}" target="_blank" 
-                class="btn btn-sm btn-outline-success document-btn">
-                <i class="fas fa-file-pdf"></i> Manual de uso
-            </a>
-        </div>
-    </section>
-
     
-
-    {% if eventos_pendientes %}
-        <div class="contenedor-mv caja-info mb-5">
-            <div class="caja-mv p-4">
-                <div class="alert alert-warning text-start m-5" role="alert">
-                    <strong>Atención:</strong> Estás asignado a un evento pero tu solicitud aún no ha sido aprobada:
-                    <br>
-                    <br>
-                    <ul class="my-5">
-                        {% for evento in eventos_pendientes %}
-                            <h4><strong>- {{ evento.eve_nombre }}</strong> en {{ evento.eve_lugar }}</h4>
-                        {% endfor %}
-                        <br>
-                    </ul>
-                    <small>Despúes de ser aprobado, se mostrará a continuación.</small>
-                </div>
-            </div>
-        </div>
-    {% endif %}
  
     {% block content %}
+
+
+        <section class="contenedor-mv caja-info">
+            <div class="text-center  caja-mv p-4 ">
+                <p>Acá puedes encontrar el manual de uso de la plataforma</p>
+                <a href="{% static 'manuales/evaluador.pdf' %}" target="_blank" 
+                    class="btn btn-sm btn-outline-success document-btn">
+                    <i class="fas fa-file-pdf"></i> Manual de uso
+                </a>
+            </div>
+        </section>
+
+
+        {% if eventos_pendientes %}
+            <div class="contenedor-mv caja-info mb-5">
+                <div class="caja-mv p-4">
+                    <div class="alert alert-warning text-start m-5" role="alert">
+                        <strong>Atención:</strong> Estás asignado a un evento pero tu solicitud aún no ha sido aprobada:
+                        <br>
+                        <br>
+                        <ul class="my-5">
+                            {% for evento in eventos_pendientes %}
+                                <h4><strong>- {{ evento.eve_nombre }}</strong> en {{ evento.eve_lugar }}</h4>
+                            {% endfor %}
+                            <br>
+                        </ul>
+                        <small>Despúes de ser aprobado, se mostrará a continuación.</small>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
 
         
         {% for evento in eventos %}

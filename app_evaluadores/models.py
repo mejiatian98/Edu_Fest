@@ -7,11 +7,15 @@ from django.core.exceptions import ValidationError
 
 
 
+
 class Calificacion(models.Model):
     cal_evaluador_fk = models.ForeignKey('app_usuarios.Evaluador', on_delete=models.CASCADE)
     cal_criterio_fk = models.ForeignKey(Criterio, on_delete=models.CASCADE)
     cal_participante_fk = models.ForeignKey(Participante, on_delete=models.CASCADE)
     cal_valor = models.IntegerField()
+
+    class Meta:
+        unique_together = ('cal_evaluador_fk', 'cal_criterio_fk', 'cal_participante_fk')
 
 
 
