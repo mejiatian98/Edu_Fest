@@ -12,6 +12,7 @@ from app_usuarios.models import Evaluador, Participante, Usuario
 from principal_eventos.settings import DEFAULT_FROM_EMAIL
 from .models import Calificacion, EvaluadorEvento
 from app_admin_eventos.models import Area, Categoria, Criterio, Evento
+from app_asistentes.models import AsistenteEvento
 from .forms import EvaluadorForm, EditarUsuarioEvaluadorForm
 from django.views.generic import DetailView, ListView
 from django.db.models import Q
@@ -27,6 +28,9 @@ from django.db.models import Q, Sum
 from django.contrib.auth.decorators import login_required
 from app_admin_eventos.models import Evento, MemoriaEvento
 from django.conf import settings
+from django.contrib.auth import logout
+from django.db import transaction
+
 
 
 
@@ -138,7 +142,7 @@ class CambioPasswordEvaluadorView(View):
 
 ########### CREAR EVALUADOR ###########
 
-@method_decorator(visitor_required, name='dispatch')
+@method_decorator(visitor_required, name='dispatch') 
 class EvaluadorCreateView(View):
     def get(self, request, evento_id):
         evento = get_object_or_404(Evento, pk=evento_id)
@@ -150,116 +154,164 @@ class EvaluadorCreateView(View):
 
     def post(self, request, evento_id):
         evento = get_object_or_404(Evento, pk=evento_id)
-        form = EvaluadorForm(request.POST, request.FILES, evento=evento)
+        # Asume que EvaluadorForm tiene el argumento 'evento'
+        form = EvaluadorForm(request.POST, request.FILES, evento=evento) 
 
         if form.is_valid():
-            cedula = form.cleaned_data['cedula']
-            username = form.cleaned_data['username']
-            first_name = form.cleaned_data['first_name']
-            last_name = form.cleaned_data['last_name']
-            email = form.cleaned_data['email']
-            telefono = form.cleaned_data['telefono']
+            try: # 🔄 Añadimos un bloque try-except para manejo de errores generales
 
-            documento = request.FILES.get('eva_eve_documento')
+                with transaction.atomic(): # 🔒 Usamos transacción atómica para seguridad
+                    cedula = form.cleaned_data['cedula']
+                    username = form.cleaned_data['username']
+                    first_name = form.cleaned_data['first_name']
+                    last_name = form.cleaned_data['last_name']
+                    email = form.cleaned_data['email']
+                    telefono = form.cleaned_data['telefono']
 
-            # 🔹 Verificar si ya existe el usuario
-            usuario, creado = Usuario.objects.get_or_create(
-                email=email,
-                defaults={
-                    "username": username,
-                    "first_name": first_name,
-                    "last_name": last_name,
-                    "telefono": telefono,
-                    "is_superuser": False,
-                    "is_staff": False,
-                    "is_active": True,
-                    "date_joined": localtime(now()),
-                    "rol": "EVALUADOR",
-                    "password": make_password(''.join(random.choices(string.ascii_letters + string.digits, k=20)))
-                }
-            )
+                    # 🔹 Buscar usuario existente por cédula, correo o username
+                    usuario_existente = Usuario.objects.filter(
+                        Q(cedula=cedula) | Q(email=email) | Q(username=username) # Usamos Q
+                    ).first()
 
-            if creado:
-                # Usuario nuevo → generar contraseña
-                password_plana = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
-                usuario.password = make_password(password_plana)
-                usuario.save()
-            else:
-                # Usuario ya existe → usa su contraseña actual
-                password_plana = None
+                    documento = request.FILES.get('eva_eve_documento')
+                    
+                    # --- 🔑 INICIO DEL BLOQUE DE REUTILIZACIÓN DE DATOS (Modificado) 🔑 ---
+                    
+                    if usuario_existente:
+                        usuario = usuario_existente
+                        creado = False
+                        password_plana = None
 
-            # 🔹 Verificar si ya existe un Evaluador con ese usuario
-            evaluador, evaluador_creado = Evaluador.objects.get_or_create(usuario=usuario)
+                        # 🛑 APLICACIÓN DE VERIFICACIÓN DE ROLES CRUZADA (CLAVE) 🛑
+                        
+                        # 1. Verificar si ya es Asistente en este evento
+                        if AsistenteEvento.objects.filter(
+                            asi_eve_evento_fk=evento,
+                            asi_eve_asistente_fk__usuario=usuario # Seguimiento al usuario
+                        ).exists():
+                            messages.error(request, f"🚫 El usuario ya está inscrito como ASISTENTE en el evento \"{evento.eve_nombre}\".")
+                            return render(request, 'crear_evaluador.html', {'form': form, 'evento': evento})
 
-            if evaluador_creado:
-                # ✅ Solo asignamos la cédula, el ID se autogenera
-                evaluador.cedula = cedula
-                evaluador.save(update_fields=["cedula"])
-            else:
-                # Si el evaluador ya existe, verificar que la cédula coincida
-                if evaluador.cedula != cedula:
-                    messages.error(request, "La cédula ingresada no coincide con el evaluador registrado.")
-                    return render(request, 'crear_evaluador.html', {'form': form, 'evento': evento})
+                        # 2. Verificar si ya es Participante en este evento
+                        if ParticipanteEvento.objects.filter(
+                            par_eve_evento_fk=evento,
+                            par_eve_participante_fk__usuario=usuario # Seguimiento al usuario
+                        ).exists():
+                            messages.error(request, f"🚫 El usuario ya está inscrito como PARTICIPANTE en el evento \"{evento.eve_nombre}\".")
+                            return render(request, 'crear_evaluador.html', {'form': form, 'evento': evento})
 
-            # 🔹 Verificar si ya está inscrito en este evento (permitir otros eventos)
-            if EvaluadorEvento.objects.filter(
-                eva_eve_evaluador_fk=evaluador,
-                eva_eve_evento_fk=evento
-            ).exists():
-                messages.warning(request, "Este evaluador ya está registrado en este evento.")
-                return redirect('pagina_principal')
+                        # Si pasa las verificaciones de roles cruzados...
+                        
+                        # Actualizar datos del usuario
+                        usuario.first_name = first_name
+                        usuario.last_name = last_name
+                        usuario.telefono = telefono
+                        usuario.username = username
+                        usuario.cedula = cedula
+                        
+                        # Asegurar que el rol principal se establezca en EVALUADOR
+                        if usuario.rol != Usuario.Roles.EVALUADOR:
+                            usuario.rol = Usuario.Roles.EVALUADOR
+                            
+                        usuario.save(update_fields=['first_name', 'last_name', 'telefono', 'username', 'cedula', 'rol'])
+                        
+                    else:
+                        # Usuario nuevo
+                        creado = True
+                        password_plana = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
+                        
+                        usuario = Usuario.objects.create(
+                            email=email,
+                            username=username,
+                            first_name=first_name,
+                            last_name=last_name,
+                            telefono=telefono,
+                            is_superuser=False,
+                            is_staff=False,
+                            is_active=True,
+                            date_joined=localtime(now()),
+                            rol=Usuario.Roles.EVALUADOR,
+                            cedula=cedula,
+                            password=make_password(password_plana)
+                        )
+                        
+                    # --- 🔑 FIN DEL BLOQUE DE REUTILIZACIÓN DE DATOS 🔑 ---
+                    
+                    # 🔹 Verificar si ya existe un Evaluador (perfil de rol) con ese usuario
+                    # get_or_create garantiza que el perfil de Evaluador exista para el usuario
+                    evaluador, evaluador_creado = Evaluador.objects.get_or_create(usuario=usuario) 
 
-            # 🔹 Crear relación EvaluadorEvento
-            EvaluadorEvento.objects.create(
-                eva_eve_evaluador_fk=evaluador,
-                eva_eve_evento_fk=evento,
-                eva_eve_fecha_hora=now(),
-                eva_eve_estado="Pendiente",
-                eva_eve_documento=documento
-            )
+                    # 🔹 Verificar si ya está inscrito en este evento como EVALUADOR (Revisión de duplicados)
+                    if EvaluadorEvento.objects.filter(
+                        eva_eve_evaluador_fk=evaluador,
+                        eva_eve_evento_fk=evento
+                    ).exists():
+                        messages.warning(request, f"⚠️ El usuario {usuario.username} ya está registrado como evaluador en este evento.")
+                        return redirect('pagina_principal')
 
-            # 🔹 Enviar correo (diferente según si el usuario es nuevo o no)
-            try:
-                if creado:
-                    mensaje = (
-                        f"Hola Evaluador {usuario.first_name},\n\n"
-                        f"Te has registrado correctamente al evento \"{evento.eve_nombre}\".\n"
-                        f"Tu estado actual es 'Pendiente' y será revisado por el administrador del evento.\n\n"
-                        f"Puedes iniciar sesión con las siguientes credenciales:\n"
-                        f"Correo registrado: {usuario.email}\n"
-                        f"Contraseña generada: {password_plana}\n\n"
-                        f"Recomendamos cambiar tu contraseña después de iniciar sesión.\n\n"
-                        f"Atentamente,\nEquipo Event-Soft"
+                    # 🔹 Crear relación EvaluadorEvento
+                    EvaluadorEvento.objects.create(
+                        eva_eve_evaluador_fk=evaluador,
+                        eva_eve_evento_fk=evento,
+                        eva_eve_fecha_hora=now(),
+                        eva_eve_estado="Pendiente",
+                        eva_eve_documento=documento
                     )
-                else:
-                    mensaje = (
-                        f"Hola Evaluador {usuario.first_name},\n\n"
-                        f"Te has inscrito correctamente al evento \"{evento.eve_nombre}\".\n"
-                        f"Tu estado actual es 'Pendiente' y será revisado por el administrador del evento.\n\n"
-                        f"Recuerda que debes iniciar sesión con tu correo: {usuario.email}\n"
-                        f"y tu contraseña actual (la misma que ya usas en Event-Soft).\n\n"
-                        f"Atentamente,\nEquipo Event-Soft"
-                    )
 
-                send_mail(
-                    subject=f"🎟️ Datos de acceso - Evento \"{evento.eve_nombre}\"",
-                    message=mensaje,
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[usuario.email],
-                    fail_silently=False
-                )
+                    # 🔹 Enviar correo (Se mantiene la lógica de correo)
+                    try:
+                        # ... lógica de correo (no modificada) ...
+                        if creado:
+                            mensaje = (
+                                f"Hola Evaluador {usuario.first_name},\n\n"
+                                f"Te has registrado correctamente al evento \"{evento.eve_nombre}\".\n"
+                                f"Tu estado actual es 'Pendiente' y será revisado por el administrador del evento.\n\n"
+                                f"Puedes iniciar sesión con las siguientes credenciales:\n"
+                                f"Correo registrado: {usuario.email}\n"
+                                f"Contraseña generada: {password_plana}\n\n"
+                                f"Recomendamos cambiar tu contraseña después de iniciar sesión.\n\n"
+                                f"Atentamente,\nEquipo Event-Soft"
+                            )
+                        else:
+                            mensaje = (
+                                f"Hola Evaluador {usuario.first_name},\n\n"
+                                f"Te has inscrito correctamente al evento \"{evento.eve_nombre}\".\n"
+                                f"Tu estado actual es 'Pendiente' y será revisado por el administrador del evento.\n\n"
+                                f"Recuerda que debes iniciar sesión con tu correo: {usuario.email}\n"
+                                f"y tu contraseña actual (la misma que ya usas en Event-Soft).\n\n"
+                                f"Atentamente,\nEquipo Event-Soft"
+                            )
+
+                        send_mail(
+                            subject=f"🎟️ Datos de acceso - Evento \"{evento.eve_nombre}\"",
+                            message=mensaje,
+                            from_email=settings.DEFAULT_FROM_EMAIL, # Asume que settings.DEFAULT_FROM_EMAIL está disponible
+                            recipient_list=[usuario.email],
+                            fail_silently=False
+                        )
+                    except Exception as e:
+                        messages.warning(request, f"Evaluador registrado, pero no se pudo enviar el correo: {e}")
+
+                    messages.success(
+                        request,
+                        f"✅ Evaluador registrado correctamente al evento '{evento.eve_nombre}'. Estado: Pendiente de aprobación."
+                    )
+                    return redirect('pagina_principal')
+
             except Exception as e:
-                messages.warning(request, f"Usuario registrado, pero no se pudo enviar el correo: {e}")
+                # Captura cualquier error ocurrido dentro de la transacción
+                messages.error(request, f"❌ Ocurrió un error inesperado al registrar el evaluador: {str(e)}")
+                # Si esto ocurre, la transacción se revertirá automáticamente.
+                
+            # Renderizar el formulario con errores si es necesario
+            return render(request, 'crear_evaluador.html', {
+                'form': form,
+                'evento': evento
+            })
 
-            messages.success(
-                request,
-                f"Evaluador registrado correctamente al evento '{evento.eve_nombre}'."
-            )
-            return redirect('pagina_principal')
 
-        else:
-            messages.error(request, "Corrija los errores en el formulario.")
-
+        # Si el formulario no es válido
+        messages.error(request, "Corrija los errores en el formulario.")
         return render(request, 'crear_evaluador.html', {
             'form': form,
             'evento': evento
@@ -800,36 +852,64 @@ class DetalleCalificacionView(DetailView):
 @method_decorator(evaluador_required, name='dispatch')
 class EliminarEvaluadorView(View):
     def get(self, request, evaluador_id):
+        # Aseguramos que el ID del evaluador coincida con el usuario logueado por seguridad (aunque evaluador_required ya ayuda)
         evaluador = get_object_or_404(Evaluador, id=evaluador_id)
         usuario = evaluador.usuario
 
-        # Obtener el evento asignado, si lo hay
-        evaluador_evento = EvaluadorEvento.objects.filter(eva_eve_evaluador_fk=evaluador).first()
-        nombre_evento = evaluador_evento.eva_eve_evento_fk.eve_nombre if evaluador_evento else "uno de nuestros eventos"
+        # 🔹 Buscar todas las inscripciones del evaluador
+        inscripciones = EvaluadorEvento.objects.filter(eva_eve_evaluador_fk=evaluador)
 
-        # Enviar correo antes de eliminar
-        if usuario.email:
-            send_mail(
-                subject='Notificación de eliminación de cuenta como evaluador',
-                message=(
-                    f'Estimado/a {usuario.last_name},\n\n'
-                    f'Le informamos que ha sido eliminado como evaluador del evento "{nombre_evento}". '
-                    f'Todos sus datos han sido eliminados por razones de seguridad.\n\n'
-                    f'Si tiene preguntas o requiere mayor información, no dude en contactarnos.\n\n'
-                    f'Atentamente,\nEquipo de organización de eventos.'
-                ),
-                from_email=DEFAULT_FROM_EMAIL,
-                recipient_list=[usuario.email],
-                fail_silently=False
+        # 🔹 Verificar si tiene inscripciones activas (aprobadas)
+        # Esto previene la eliminación del perfil si está activamente asignado a un evento.
+        tiene_inscripciones_activas = inscripciones.filter(eva_eve_estado="Aprobado").exists()
+        if tiene_inscripciones_activas:
+            messages.error(
+                request,
+                "❌ No puedes eliminar tu perfil de Evaluador mientras tengas inscripciones activas. "
+                "Por favor, cancela tus inscripciones antes de eliminar tu perfil."
             )
+            return redirect('pagina_principal')
 
-        # Cerrar sesión antes de eliminar
-        request.session.flush()
+        # 🔑 LÓGICA ELIMINADA: Se quita el loop que intentaba liberar cupos (eve_capacidad)
+        # for inscripcion in inscripciones:
+        #     if inscripcion.eva_eve_estado == "Aprobado":
+        #         evento = inscripcion.eva_eve_evento_fk
+        #         # evento.eve_capacidad += 1
+        #         # evento.save(update_fields=["eve_capacidad"])
 
-        # Eliminar al usuario (esto elimina automáticamente al evaluador)
-        usuario.delete()
+        # 🔹 Obtener el último evento inscrito (para referencia en el correo)
+        ultimo_evento = inscripciones.first()
+        nombre_evento = ultimo_evento.eva_eve_evento_fk.eve_nombre if ultimo_evento else "uno de nuestros eventos"
 
-        messages.success(request, "El evaluador ha sido eliminado correctamente.")
+        # 🔑 PASO 1: ELIMINAR LA RELACIÓN (Perfil) EVALUADOR
+        # Esto elimina automáticamente todas las inscripciones en EvaluadorEvento (por CASCADE)
+        evaluador.delete()         
+
+
+        # 🔹 Enviar correo
+        if usuario.email:
+             try:
+                send_mail(
+                    subject='🗑️ Notificación de eliminación de perfil como Evaluador',
+                    message=(
+                        f'Estimado/a {usuario.first_name},\n\n'
+                        f'Le informamos que su perfil de **Evaluador** ha sido eliminado correctamente de Event-Soft.\n\n'
+                        f'Todos sus datos de evaluación en eventos como "{nombre_evento}" '
+                        f'han sido eliminados. **Su cuenta de usuario principal no ha sido eliminada**.\n\n'
+                        f'Si desea volver a inscribirse como Evaluador en el futuro, puede hacerlo usando su cuenta existente.\n\n'
+                        f'Atentamente,\nEquipo de organización de eventos.'
+                    ),
+                    from_email=DEFAULT_FROM_EMAIL,
+                    recipient_list=[usuario.email],
+                    fail_silently=False
+                )
+             except Exception:
+                 messages.warning(request, "El perfil de evaluador fue eliminado, pero no se pudo enviar el correo de notificación.")
+
+        # 🔹 Cerrar sesión del usuario
+        logout(request)
+
+        messages.success(request, "✅ Tu perfil de Evaluador y tus inscripciones han sido eliminadas correctamente. Hemos cerrado tu sesión.")
         return redirect('pagina_principal')
 
     

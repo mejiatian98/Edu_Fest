@@ -10,17 +10,19 @@
     <form method="post" enctype="multipart/form-data" class="p-4 rounded border shadow bg-light">
         {% csrf_token %}
 
-        <div class = "row">
-            <div class=" col-md-6  mb-3">
-        
-                <label class="form-label">Cédula:</label>
-                <input type="text" class="form-control" value="{{ evaluador.cedula }}" disabled>
-            </div>
+        <div class="mb-3">
+            <label class="form-label">Cédula:</label>
+            <input type="text" class="form-control" value="{{ usuario.cedula }}" disabled>
+        </div>
 
-            <div class=" col-md-6  mb-3">
-                <label class="form-label">Correo:</label>
-                <input type="email" class="form-control" value="{{ usuario.email }}" disabled>
-            </div>
+        <div class="mb-3">
+            <label class="form-label">Correo:</label>
+            <input type="email" class="form-control" value="{{ usuario.email }}" disabled>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Nombre de usuario:</label>
+            <input type="text" class="form-control" value="{{ usuario.username }}" disabled>
         </div>
         
         {{ form.as_p }}

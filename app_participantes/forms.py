@@ -1,77 +1,138 @@
-# En tu archivo forms.py
-
 from django import forms
 from app_usuarios.models import Usuario, Participante
 from .models import ParticipanteEvento
+from django.core.exceptions import ValidationError
+from django.contrib.auth import get_user_model
 
+# Obtenemos el modelo de Usuario
+UserModel = get_user_model() 
 
 class ParticipanteForm(forms.ModelForm):
-    # Campo para la cédula (id)
-    id = forms.IntegerField(
+    # Campos que corresponden al modelo Usuario o campos extra
+    cedula = forms.CharField(
         label="Cédula",
-        widget=forms.NumberInput(
-            attrs={'class': 'form-control', 'placeholder': 'Ingresa tu número de cédula'}
-        )
+        max_length=20,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ingresa tu número de cédula',
+            'required': True
+        })
     )
 
-    # Campos de Usuario
     username = forms.CharField(
         label="Nombre de usuario",
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nombre de usuario',
+            'required': True
+        })
     )
+
     email = forms.EmailField(
         label="Correo electrónico",
-        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@email.com'})
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'tu@email.com',
+            'required': True
+        })
     )
+
     telefono = forms.CharField(
         label="Teléfono",
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono'})
+        max_length=15,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Número de teléfono',
+            'required': True
+        })
     )
+
     first_name = forms.CharField(
         label="Nombre",
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu nombre'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Tu nombre',
+            'required': True
+        })
     )
+
     last_name = forms.CharField(
         label="Apellido",
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu apellido'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Tu apellido',
+            'required': True
+        })
+    )
+
+    # El campo de archivo (pertenece a ParticipanteEvento)
+    par_eve_documentos = forms.FileField(
+        label="Documento de Exposición (solo PDF)", 
+        required=True, 
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+            'accept': 'application/pdf'
+        })
     )
 
     class Meta:
         model = Participante
-        fields = ['id']  # El único campo que pertenece directamente al modelo Participante
+        # CORRECCIÓN PARA EVITAR ImproperlyConfigured: 
+        # Indicamos que no debe usar campos automáticos del modelo Participante.
+        fields = [] 
 
     def __init__(self, *args, **kwargs):
         self.evento = kwargs.pop('evento', None)
         super().__init__(*args, **kwargs)
 
-    def validate_unique(self):
-        exclude = self._get_validation_exclusions()
-        try:
-            self.instance.validate_unique(exclude=exclude)
-        except forms.ValidationError as e:
-            # Eliminamos errores de unicidad ajenos al flujo actual
-            e.error_dict.pop('id', None)
-            if e.error_dict:
-                raise
+    def clean_par_eve_documentos(self):
+        documento = self.files.get('par_eve_documentos')
+        if not documento:
+            raise forms.ValidationError("Debe cargar el documento para continuar.")
+            
+        if not documento.content_type.startswith('application/pdf'):
+            raise forms.ValidationError("Solo se permiten archivos en formato PDF.")
+        return documento
+
+    def clean_cedula(self):
+        cedula = self.cleaned_data.get('cedula')
+        # La validación de unicidad estricta para el campo 'cedula' se maneja
+        # si es un usuario nuevo.
+        return cedula
+    
+
+    def clean(self):
+        cleaned_data = super().clean()
+        cedula = cleaned_data.get('cedula')
+        evento = self.evento
+        
+        # Validar si el usuario ya está inscrito en el evento
+        if cedula and evento:
+            try:
+                usuario_existente = UserModel.objects.get(cedula=cedula)
+                if Participante.objects.filter(usuario=usuario_existente).exists():
+                    participante_existente = Participante.objects.get(usuario=usuario_existente)
+                    if ParticipanteEvento.objects.filter(
+                        par_eve_participante_fk=participante_existente, 
+                        par_eve_evento_fk=evento
+                    ).exists():
+                        raise forms.ValidationError(
+                            {'cedula': f"Ya existe un participante con la cédula {cedula} registrado para el evento '{evento.eve_nombre}'."}
+                        )
+                
+            except UserModel.DoesNotExist:
+                pass # Es un usuario nuevo, no hay conflicto de inscripción previa.
+
+        return cleaned_data
 
 
-    def clean_id(self):
-        id_value = self.cleaned_data['id']
-        return str(id_value).strip()
-
-
-
-
-
-# Agregar la clase que falta
+# Form para editar
 class EditarUsuarioParticipanteForm(forms.ModelForm):
     class Meta:
         model = Usuario
-        fields = ['first_name', 'last_name', 'email', 'telefono']
+        fields = ['first_name', 'last_name', 'telefono']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'email': forms.EmailInput(attrs={'class': 'form-control'}),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
         }

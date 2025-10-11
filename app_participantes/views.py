@@ -4,7 +4,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.urls import reverse
 from .models import ParticipanteEvento
-from app_usuarios.models import Participante, Usuario
+from app_usuarios.models import Evaluador, Participante, Usuario
 from app_admin_eventos.models import Evento, Criterio
 from .forms import EditarUsuarioParticipanteForm, ParticipanteForm
 from django.contrib import messages
@@ -23,12 +23,14 @@ from django.contrib.auth.decorators import login_required
 from app_admin_eventos.models import Evento, MemoriaEvento
 from django.db import transaction
 from django.contrib.auth.models import Group
+from django.contrib.auth import logout
+from app_asistentes.models import AsistenteEvento
+from app_evaluadores.models import EvaluadorEvento
+from django.contrib.auth.hashers import make_password 
 
 
 def crear_o_obtener_grupo_proyecto(codigo_proyecto, evento_nombre):
-    """
-    Crea o obtiene un grupo de Django para el proyecto
-    """
+    # ... (Tu código de la función)
     nombre_grupo = f"Proyecto_{codigo_proyecto}_{evento_nombre[:20]}"
     grupo, created = Group.objects.get_or_create(
         name=nombre_grupo
@@ -36,245 +38,320 @@ def crear_o_obtener_grupo_proyecto(codigo_proyecto, evento_nombre):
     return grupo
 
 
+
 ######## CREAR PARTICIPANTE ########
+MAX_MIEMBROS_GRUPO = 5  # Incluye al líder
 @method_decorator(visitor_required, name='dispatch')
 class ParticipanteCreateView(View):
+    """
+    Vista para manejar el formulario de preinscripción de un Participante (Individual o Grupal)
+    a un Evento específico.
+    """
+    
+    # ----------------------------------------------------------------------
+    # 1. GET: Mostrar el formulario de inscripción
+    # ----------------------------------------------------------------------
     def get(self, request, pk):
         evento = get_object_or_404(Evento, pk=pk)
-        form = ParticipanteForm(evento=evento)
+        form = ParticipanteForm(evento=evento) 
         return render(request, 'crear_participante.html', {
             'form': form,
             'evento': evento,
         })
 
+    # ----------------------------------------------------------------------
+    # 2. POST: Procesar el formulario de inscripción
+    # ----------------------------------------------------------------------
     def post(self, request, pk):
         evento = get_object_or_404(Evento, pk=pk)
         form = ParticipanteForm(request.POST, request.FILES, evento=evento)
-        documento = request.FILES.get('par_eve_documentos')
-
+        
+        documento = request.FILES.get('par_eve_documentos') 
+        es_grupo = request.POST.get('tipo_participacion') == 'grupo'
+        
+        # Validaciones iniciales
         if not documento:
             messages.error(request, "Debe cargar el documento para continuar.")
-            return render(request, 'crear_participante.html', {
-                'form': form,
-                'evento': evento,
-            })
+            return render(request, 'crear_participante.html', {'form': form, 'evento': evento})
+
+        if es_grupo:
+            # === Validación de Límite de Miembros Adicionales ===
+            miembros_adicionales_enviados = 0
+            i = 1
+            while f'miembro_{i}_cedula' in request.POST:
+                cedula_miembro = request.POST.get(f'miembro_{i}_cedula')
+                # Contamos si los campos esenciales del miembro están presentes.
+                if cedula_miembro and request.POST.get(f'miembro_{i}_nombre') and request.POST.get(f'miembro_{i}_email'):
+                    miembros_adicionales_enviados += 1
+                i += 1
+            
+            total_personas = 1 + miembros_adicionales_enviados # Líder (1) + Adicionales
+            
+            if total_personas > MAX_MIEMBROS_GRUPO:
+                messages.error(request, f"El grupo excede el límite. El máximo permitido es de {MAX_MIEMBROS_GRUPO} personas (incluyendo al líder). Se detectaron {total_personas}.")
+                return render(request, 'crear_participante.html', {'form': form, 'evento': evento})
+        # ======================================================
 
         if form.is_valid():
             try:
                 with transaction.atomic():
-                    # Normalizamos la cédula
-                    id = str(form.cleaned_data['id']).strip()
-
-                    # 🔹 Verificar si ya existe un participante con esta cédula
-                    participante_existente = Participante.objects.filter(id=id).first()
-                    if participante_existente:
-                        usuario = participante_existente.usuario
-
-                        # 🔹 Validar que la cédula coincida correctamente (seguridad extra)
-                        if str(participante_existente.id).strip() != id:
-                            messages.error(request, f"La cédula ingresada ({id}) no coincide con el participante registrado ({participante_existente.id}).")
+                    cedula_lider = str(form.cleaned_data['cedula']).strip()
+                    contrasena_generada = None 
+                    
+                    # ----------------------------------------------------------------
+                    # A. Lógica para el Participante Líder / Individual
+                    # ----------------------------------------------------------------
+                    usuario_existente = Usuario.objects.filter(cedula=cedula_lider).first()
+                    participante_lider = None
+                    usuario = None
+                    
+                    if usuario_existente:
+                        # 1. 🛑 Validación de Roles Cruzados (Líder) 🛑
+                        if AsistenteEvento.objects.filter(asi_eve_evento_fk=evento, asi_eve_asistente_fk__usuario=usuario_existente).exists():
+                            messages.error(request, f"🚫 El líder ({cedula_lider}) ya está inscrito como ASISTENTE en este evento.")
                             return render(request, 'crear_participante.html', {'form': form, 'evento': evento})
+                        if EvaluadorEvento.objects.filter(eva_eve_evento_fk=evento, eva_eve_evaluador_fk__usuario=usuario_existente).exists():
+                            messages.error(request, f"🚫 El líder ({cedula_lider}) ya está inscrito como EVALUADOR en este evento.")
+                            return render(request, 'crear_participante.html', {'form': form, 'evento': evento})
+                        
+                        # Intentar obtener perfil Participante
+                        try:
+                            participante_existente = usuario_existente.participante 
+                        except Participante.DoesNotExist:
+                            participante_existente = None
 
-                        # 🔹 Verificar si ya está registrado en este evento
-                        if ParticipanteEvento.objects.filter(
-                            par_eve_participante_fk=participante_existente,
-                            par_eve_evento_fk=evento
-                        ).exists():
-                            messages.error(request, f"Ya existe un participante con la cédula {id} registrado para el evento '{evento.eve_nombre}'.")
-                            return render(request, 'crear_participante.html', {
-                                'form': form,
-                                'evento': evento,
-                            })
-
-                        participante_lider = participante_existente
-
-                        # 🔹 Generar nueva contraseña (solo si quieres renovarla)
-                        contrasena_generada = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
-                        usuario.set_password(contrasena_generada)
-                        usuario.save()
-
+                        if participante_existente:
+                            # Validar que no esté ya inscrito en este evento
+                            if ParticipanteEvento.objects.filter(par_eve_participante_fk=participante_existente, par_eve_evento_fk=evento).exists():
+                                messages.error(request, f"Ya existe un participante con la cédula {cedula_lider} registrado para el evento '{evento.eve_nombre}'.")
+                                return render(request, 'crear_participante.html', {'form': form, 'evento': evento})
+                            
+                            # Usuario y Perfil Participante existen (Solo actualizar datos de usuario)
+                            participante_lider = participante_existente
+                            usuario = usuario_existente
+                            
+                            usuario.first_name = form.cleaned_data['first_name']
+                            usuario.last_name = form.cleaned_data['last_name']
+                            usuario.telefono = form.cleaned_data['telefono']
+                            usuario.username = form.cleaned_data['username']
+                            usuario.rol = Usuario.Roles.PARTICIPANTE # Asegura el rol
+                            usuario.save(update_fields=['first_name', 'last_name', 'telefono', 'username', 'rol'])
+                            
+                        else:
+                            # Usuario existe, pero NO tiene perfil de Participante (Crearlo)
+                            usuario_existente.first_name = form.cleaned_data['first_name']
+                            usuario_existente.last_name = form.cleaned_data['last_name']
+                            usuario_existente.telefono = form.cleaned_data['telefono']
+                            usuario_existente.username = form.cleaned_data['username']
+                            usuario_existente.rol = Usuario.Roles.PARTICIPANTE
+                            usuario_existente.save(update_fields=['first_name', 'last_name', 'telefono', 'username', 'rol'])
+                            
+                            participante_lider = Participante.objects.create(usuario=usuario_existente)
+                            usuario = usuario_existente
+                            
                     else:
-                        # 🔹 Verificar email único
-                        email_formulario = form.cleaned_data['email']
-                        if Usuario.objects.filter(email=email_formulario).exists():
-                            messages.error(request, f"El correo {email_formulario} ya está registrado.")
-                            return render(request, 'crear_participante.html', {
-                                'form': form,
-                                'evento': evento,
-                            })
-
-                        # 🔹 Verificar username único
-                        username_formulario = form.cleaned_data['username']
-                        if Usuario.objects.filter(username=username_formulario).exists():
-                            messages.error(request, f"El nombre de usuario {username_formulario} ya está registrado.")
-                            return render(request, 'crear_participante.html', {
-                                'form': form,
-                                'evento': evento,
-                            })
-
-                        # 🔹 Crear usuario nuevo
+                        # Usuario y Participante son COMPLETAMENTE nuevos (Creación total y generación de contraseña)
+                        contrasena_generada = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
+                        
                         usuario = Usuario.objects.create(
                             username=form.cleaned_data['username'],
                             first_name=form.cleaned_data['first_name'],
                             last_name=form.cleaned_data['last_name'],
                             email=form.cleaned_data['email'],
                             telefono=form.cleaned_data['telefono'],
-                            is_superuser=False,
-                            is_staff=False,
                             is_active=True,
                             date_joined=localtime(now()),
-                            rol="PARTICIPANTE",
+                            rol=Usuario.Roles.PARTICIPANTE,
+                            cedula=cedula_lider,
                         )
+                        usuario.password = make_password(contrasena_generada)
+                        usuario.save(update_fields=['password'])
+                        
+                        participante_lider = Participante.objects.create(usuario=usuario)
 
-                        contrasena_generada = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
-                        usuario.set_password(contrasena_generada)
-                        usuario.save()
-
-                        # 🔹 Crear el participante asociado
-                        participante_lider = Participante.objects.create(id=id, usuario=usuario)
-
-                    # Determinar si es grupo
-                    es_grupo = request.POST.get('tipo_participacion') == 'grupo'
-
-                    # 🔹 Crear relación Evento - Participante líder
+                    # ----------------------------------------------------------------
+                    # B. Creación de ParticipanteEvento (Registro del Proyecto)
+                    # ----------------------------------------------------------------
                     participante_evento_lider = ParticipanteEvento.objects.create(
                         par_eve_evento_fk=evento,
                         par_eve_participante_fk=participante_lider,
                         par_eve_estado="Pendiente",
-                        par_eve_clave="",
-                        par_eve_qr="",
                         par_eve_documentos=documento,
                         par_eve_es_grupo=es_grupo,
-                        par_eve_proyecto_principal=None,
+                        # par_eve_proyecto_principal y par_eve_codigo_proyecto se manejan en el modelo/default
                     )
 
-                    codigo_proyecto = participante_evento_lider.par_eve_codigo_proyecto
+                    codigo_proyecto = participante_evento_lider.par_eve_codigo_proyecto 
                     correos_enviados = [usuario.email]
-
-                    # Crear grupo de Django si es un proyecto grupal
+                    
+                    # Manejo de Grupo de Django (para permisos/etc.)
                     grupo_django = None
                     if es_grupo:
-                        grupo_django = crear_o_obtener_grupo_proyecto(codigo_proyecto, evento.eve_nombre)
+                        nombre_grupo = f"{evento.eve_nombre[:20].strip()}-{codigo_proyecto}"
+                        grupo_django, _ = Group.objects.get_or_create(name=nombre_grupo)
                         usuario.groups.add(grupo_django)
 
-                    # 🔹 Crear miembros adicionales (si es grupo)
+                    # ----------------------------------------------------------------
+                    # C. Lógica para Miembros Adicionales (Si es Grupal)
+                    # ----------------------------------------------------------------
+                    miembros_creados = []
                     if es_grupo:
-                        miembros_creados = []
                         i = 1
+                        # Iterar sobre los posibles campos de miembros (miembro_1, miembro_2, etc.)
                         while f'miembro_{i}_cedula' in request.POST:
-                            cedula = request.POST.get(f'miembro_{i}_cedula')
-                            nombre_completo = request.POST.get(f'miembro_{i}_nombre')
-                            email = request.POST.get(f'miembro_{i}_email')
-                            telefono = request.POST.get(f'miembro_{i}_telefono', '')
+                            cedula_miembro = request.POST.get(f'miembro_{i}_cedula')
+                            nombre_miembro = request.POST.get(f'miembro_{i}_nombre')     # <--- Campo de Nombre
+                            apellido_miembro = request.POST.get(f'miembro_{i}_apellido') # <--- Campo de Apellido
+                            email_miembro = request.POST.get(f'miembro_{i}_email')
+                            telefono_miembro = request.POST.get(f'miembro_{i}_telefono', '')
 
-                            if cedula and nombre_completo and email:
-                                cedula = str(cedula).strip()
+                            # Usamos nombre_miembro y apellido_miembro por separado
+                            if cedula_miembro and nombre_miembro and apellido_miembro and email_miembro:
+                                cedula_miembro = str(cedula_miembro).strip()
+                                
+                                # A diferencia de antes, YA NO NECESITAS la lógica de separación de nombre/apellido 
+                                # porque los estás recibiendo separados del formulario.
+                                nombre = nombre_miembro.strip()
+                                apellido = apellido_miembro.strip()
 
-                                miembro_existente = Participante.objects.filter(id=cedula).first()
-                                if miembro_existente and ParticipanteEvento.objects.filter(
-                                    par_eve_participante_fk=miembro_existente,
-                                    par_eve_evento_fk=evento
-                                ).exists():
-                                    messages.error(request, f"El miembro con cédula {cedula} ya está registrado para el evento '{evento.eve_nombre}'.")
-                                    return render(request, 'crear_participante.html', {'form': form, 'evento': evento})
+                                usuario_miembro_existente = Usuario.objects.filter(cedula=cedula_miembro).first()
+                                contrasena_miembro = None 
+                                
+                                if usuario_miembro_existente:
+                                    # 🛑 Validación de Roles Cruzados (Miembro) 🛑
+                                    if AsistenteEvento.objects.filter(asi_eve_evento_fk=evento, asi_eve_asistente_fk__usuario=usuario_miembro_existente).exists():
+                                        messages.error(request, f"🚫 El miembro ({cedula_miembro}) ya está inscrito como ASISTENTE en este evento.")
+                                        raise Exception("Error de rol cruzado.")
+                                    if EvaluadorEvento.objects.filter(eva_eve_evento_fk=evento, eva_eve_evaluador_fk__usuario=usuario_miembro_existente).exists():
+                                        messages.error(request, f"🚫 El miembro ({cedula_miembro}) ya está inscrito como EVALUADOR en este evento.")
+                                        raise Exception("Error de rol cruzado.")
 
-                                if not miembro_existente and Usuario.objects.filter(email=email).exists():
-                                    messages.error(request, f"El correo {email} ya está registrado.")
-                                    return render(request, 'crear_participante.html', {'form': form, 'evento': evento})
+                                    # Obtener/Crear Perfil Participante para el miembro
+                                    try:
+                                        participante_miembro_existente = usuario_miembro_existente.participante
+                                    except Participante.DoesNotExist:
+                                        participante_miembro_existente = None
+                                    
+                                    if participante_miembro_existente:
+                                        # Validar que no esté ya inscrito en este evento
+                                        if ParticipanteEvento.objects.filter(par_eve_participante_fk=participante_miembro_existente, par_eve_evento_fk=evento).exists():
+                                            messages.error(request, f"El miembro ({cedula_miembro}) ya está registrado para el evento '{evento.eve_nombre}'.")
+                                            raise Exception("Participante ya inscrito.")
 
-                                if miembro_existente:
-                                    participante_miembro = miembro_existente
-                                    usuario_miembro = participante_miembro.usuario
-                                    contrasena_miembro = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
-                                    usuario_miembro.set_password(contrasena_miembro)
-                                    usuario_miembro.save()
+                                        participante_miembro = participante_miembro_existente
+                                        usuario_miembro = participante_miembro.usuario
+                                        
+                                        # Actualizar datos de Usuario Existente
+                                        usuario_miembro.first_name = nombre 
+                                        usuario_miembro.last_name = apellido
+                                        usuario_miembro.telefono = telefono_miembro
+                                        usuario_miembro.rol = Usuario.Roles.PARTICIPANTE
+                                        usuario_miembro.save(update_fields=['first_name', 'last_name', 'telefono', 'rol'])
+                                    else:
+                                        # Usuario Existe, Crear Perfil Participante
+                                        usuario_miembro = usuario_miembro_existente
+                                        
+                                        # Actualizar datos de Usuario Existente
+                                        usuario_miembro.first_name = nombre 
+                                        usuario_miembro.last_name = apellido
+                                        usuario_miembro.telefono = telefono_miembro
+                                        usuario_miembro.rol = Usuario.Roles.PARTICIPANTE
+                                        usuario_miembro.save(update_fields=['first_name', 'last_name', 'telefono', 'rol'])
+                                        
+                                        participante_miembro = Participante.objects.create(usuario=usuario_miembro)
+                                        
                                 else:
-                                    partes_nombre = nombre_completo.strip().split()
-                                    nombre = partes_nombre[0]
-                                    apellido = ' '.join(partes_nombre[1:]) if len(partes_nombre) > 1 else ''
-                                    username_miembro = f"{nombre.lower()}{cedula[-4:]}"
+                                    # Usuario y Participante son COMPLETAMENTE nuevos (Creación total y generación de contraseña)
+                                    username_miembro = f"{nombre.lower()}{cedula_miembro[-4:]}"
                                     contador = 1
                                     username_original = username_miembro
+                                    # Asegurar que el username es único
                                     while Usuario.objects.filter(username=username_miembro).exists():
                                         username_miembro = f"{username_original}{contador}"
                                         contador += 1
+                                    
                                     contrasena_miembro = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
+                                    
                                     usuario_miembro = Usuario.objects.create(
                                         username=username_miembro,
-                                        first_name=nombre,
-                                        last_name=apellido,
-                                        email=email,
-                                        telefono=telefono,
-                                        is_superuser=False,
-                                        is_staff=False,
+                                        first_name=nombre, 
+                                        last_name=apellido, 
+                                        email=email_miembro,
+                                        telefono=telefono_miembro,
                                         is_active=True,
                                         date_joined=localtime(now()),
-                                        rol="PARTICIPANTE"
+                                        rol=Usuario.Roles.PARTICIPANTE,
+                                        cedula=cedula_miembro
                                     )
-                                    usuario_miembro.set_password(contrasena_miembro)
-                                    usuario_miembro.save()
+                                    usuario_miembro.password = make_password(contrasena_miembro)
+                                    usuario_miembro.save(update_fields=['password'])
 
-                                    participante_miembro = Participante.objects.create(id=cedula, usuario=usuario_miembro)
+                                    participante_miembro = Participante.objects.create(usuario=usuario_miembro)
 
+                                # Añadir a grupo de Django y ParticipanteEvento
                                 if grupo_django:
                                     usuario_miembro.groups.add(grupo_django)
 
+                                # Crear la relación ParticipanteEvento (miembro)
                                 ParticipanteEvento.objects.create(
                                     par_eve_evento_fk=evento,
                                     par_eve_participante_fk=participante_miembro,
                                     par_eve_estado="Pendiente",
-                                    par_eve_clave="",
-                                    par_eve_qr="",
                                     par_eve_es_grupo=True,
                                     par_eve_proyecto_principal=participante_evento_lider,
                                     par_eve_codigo_proyecto=codigo_proyecto,
                                 )
 
+                                # Registrar datos del miembro para el correo de notificación
                                 miembros_creados.append({
-                                    'nombre': nombre_completo,
-                                    'email': email,
-                                    'username': usuario_miembro.username,
+                                    'nombre': nombre, # Usamos solo el nombre para el saludo
+                                    'nombre_completo': f"{nombre} {apellido}", # Para el saludo completo si se requiere
+                                    'email': email_miembro,
                                     'password': contrasena_miembro
                                 })
-                                correos_enviados.append(email)
+                                correos_enviados.append(email_miembro)
 
                             i += 1
-
-                    # 🔹 Envío de correos
+                    
+                    # ----------------------------------------------------------------
+                    # D. Envío de Correos y Mensajes de Éxito
+                    # ----------------------------------------------------------------
                     try:
+                        # Correo para Líder/Individual
+                        accion_lider = "generada" if contrasena_generada else "actual (la misma que ya usas)"
                         mensaje_lider = f"Hola {usuario.first_name} {usuario.last_name},\n\n" \
                                         f"Te has registrado correctamente como {'líder del grupo' if es_grupo else 'participante'} " \
                                         f"al evento \"{evento.eve_nombre}\".\n\n" \
                                         f"Código del proyecto: {codigo_proyecto}\n"
                         if es_grupo and grupo_django:
                             mensaje_lider += f"Grupo asignado: {grupo_django.name}\n"
+
                         mensaje_lider += f"Puedes ingresar con tu correo: {usuario.email}\n" \
-                                         f"Y tu contraseña generada: {contrasena_generada}\n\n"
-                        if es_grupo:
-                            mensaje_lider += f"Tu grupo tiene {len(miembros_creados)} miembros adicionales.\n\n"
-                        mensaje_lider += "Recomendamos cambiar tu contraseña después de iniciar sesión."
+                                         f"Tu contraseña es: {contrasena_generada if contrasena_generada else 'la que ya tenías'}. "
 
                         send_mail(
-                            subject="Registro exitoso a Event-Soft - Líder del proyecto",
+                            subject=f"🎟️ Registro exitoso - Evento \"{evento.eve_nombre}\" - Líder/Participante",
                             message=mensaje_lider,
                             from_email=None,
                             recipient_list=[usuario.email],
                             fail_silently=False
                         )
 
+                        # Correo para Miembros (si es grupo)
                         if es_grupo:
                             for miembro in miembros_creados:
-                                mensaje_miembro = f"Hola {miembro['nombre']},\n\n" \
+                                accion_miembro = "generada" if miembro['password'] else "actual"
+                                # Usamos 'nombre_completo' para el saludo del correo del miembro
+                                mensaje_miembro = f"Hola {miembro['nombre_completo']},\n\n" \
                                                   f"Has sido registrado como miembro del grupo para el evento \"{evento.eve_nombre}\".\n\n" \
                                                   f"Código del proyecto: {codigo_proyecto}\n" \
                                                   f"Grupo asignado: {grupo_django.name}\n" \
                                                   f"Líder: {usuario.first_name} {usuario.last_name}\n" \
-                                                  f"Correo: {miembro['email']}\n" \
-                                                  f"Contraseña: {miembro['password']}\n\n" \
-                                                  f"Recomendamos cambiar tu contraseña después de iniciar sesión."
-
+                                                  f"Puedes ingresar con tu correo: {miembro['email']}\n" \
+                                                  f"Tu contraseña es: {miembro['password'] if miembro['password'] else 'la que ya tenías'}. "
+                                
                                 send_mail(
-                                    subject="Registro exitoso a Event-Soft - Miembro del grupo",
+                                    subject=f"🎟️ Registro exitoso - Evento \"{evento.eve_nombre}\" - Miembro del grupo",
                                     message=mensaje_miembro,
                                     from_email=None,
                                     recipient_list=[miembro['email']],
@@ -286,20 +363,22 @@ class ParticipanteCreateView(View):
 
                     tipo_mensaje = "grupal" if es_grupo else "individual"
                     mensaje_exito = f"La preinscripción {tipo_mensaje} fue exitosa al evento \"{evento.eve_nombre}\". " \
-                                    f"Código del proyecto: {codigo_proyecto}. "
-                    if es_grupo and grupo_django:
-                        mensaje_exito += f"Grupo Django creado: {grupo_django.name}. "
-                    mensaje_exito += f"Revisa {'los correos' if es_grupo else 'tu correo'} para obtener las credenciales."
+                                    f"Código del proyecto: {codigo_proyecto}. " \
+                                    f"Revisa {'los correos' if es_grupo else 'tu correo'} para obtener las credenciales."
                     messages.success(request, mensaje_exito)
-                    return redirect('pagina_principal')
+                    return redirect('pagina_principal') # Redirección a la página principal (o la que corresponda)
 
             except Exception as e:
-                messages.error(request, f"Ocurrió un error durante el registro: {str(e)}")
+                # Si una excepción fue lanzada (como en el error de rol cruzado), el transaction.atomic() se encargará del rollback
+                if not messages.get_messages(request): # Si no hay mensajes de error previos (como el de rol cruzado)
+                    messages.error(request, f"Ocurrió un error grave durante el registro: {str(e)}")
+                
                 return render(request, 'crear_participante.html', {
                     'form': form,
                     'evento': evento,
                 })
 
+        # Si el formulario no es válido
         return render(request, 'crear_participante.html', {
             'form': form,
             'evento': evento,
@@ -308,42 +387,69 @@ class ParticipanteCreateView(View):
 
 
 
+#Ocurrió un error grave durante el registro: cannot access local variable 'make_password' where it is not associated with a value
+
+
 ######## CANCELAR PREINSCRIPCION PARTICIPANTE ########
 
 @method_decorator(participante_required, name='dispatch')
 class EliminarParticipanteView(View):
     def get(self, request, participante_id):
+        # Aseguramos que el ID del participante coincida con el usuario logueado por seguridad (aunque participante_required ya ayuda)
         participante = get_object_or_404(Participante, id=participante_id)
         usuario = participante.usuario
 
-        # Obtener el evento asignado, si lo hay
-        participante_evento = ParticipanteEvento.objects.filter(par_eve_participante_fk=participante).first()
-        nombre_evento = participante_evento.par_eve_evento_fk.eve_nombre if participante_evento else "uno de nuestros eventos"
+        # 🔹 Buscar todas las inscripciones del participante
+        inscripciones = ParticipanteEvento.objects.filter(par_eve_participante_fk=participante)
 
-        # Enviar correo antes de eliminar
-        if usuario.email:
-            send_mail(
-                subject='Notificación de eliminación de cuenta como participante',
-                message=(
-                    f'Estimado/a {usuario.first_name},\n\n'
-                    f'Le informamos que ha sido eliminado como participante del evento "{nombre_evento}". '
-                    f'Todos sus datos han sido eliminados por razones de seguridad.\n\n'
-                    f'Si tiene preguntas o requiere mayor información, no dude en contactarnos.\n\n'
-                    f'Atentamente,\nEquipo de organización de eventos.'
-                ),
-                from_email=DEFAULT_FROM_EMAIL,
-                recipient_list=[usuario.email],
-                fail_silently=False
+        # 🔹 Verificar si tiene inscripciones activas (aprobadas)
+        # Esto previene la eliminación del perfil si está activamente asignado a un evento.
+        tiene_inscripciones_activas = inscripciones.filter(par_eve_estado="Aprobado").exists()
+        if tiene_inscripciones_activas:
+            messages.error(
+                request,
+                "❌ No puedes eliminar tu perfil de Exponente mientras tengas inscripciones activas. "
+                "Por favor, cancela tus inscripciones antes de eliminar tu perfil."
             )
+            return redirect('pagina_principal')
 
-        # Cerrar sesión antes de eliminar
-        request.session.flush()
 
-        # Eliminar al usuario, lo cual también eliminará al participante
-        usuario.delete()
+        # 🔹 Obtener el último evento inscrito (para referencia en el correo)
+        ultimo_evento = inscripciones.first()
+        nombre_evento = ultimo_evento.par_eve_evento_fk.eve_nombre if ultimo_evento else "uno de nuestros eventos"
 
-        messages.success(request, "El participante ha sido eliminado correctamente.")
-        return redirect('pagina_principal')   
+        # 🔑 PASO 1: ELIMINAR LA RELACIÓN (Perfil) PARTICIPANTE
+        # Esto elimina automáticamente todas las inscripciones en ParticipanteEvento (por CASCADE)
+        participante.delete()
+        
+
+        # 🔹 Enviar correo
+        if usuario.email:
+             try:
+                send_mail(
+                    subject='🗑️ Notificación de eliminación de perfil como Exponente',
+                    message=(
+                        f'Estimado/a {usuario.first_name},\n\n'
+                        f'Le informamos que su perfil de **Exponente** ha sido eliminado correctamente de Event-Soft.\n\n'
+                        f'Todos sus datos de evaluación en eventos como "{nombre_evento}" '
+                        f'han sido eliminados. **Su cuenta de usuario principal no ha sido eliminada**.\n\n'
+                        f'Si desea volver a inscribirse como Exponente en el futuro, puede hacerlo usando su cuenta existente.\n\n'
+                        f'Atentamente,\nEquipo de organización de eventos.'
+                    ),
+                    from_email=DEFAULT_FROM_EMAIL,
+                    recipient_list=[usuario.email],
+                    fail_silently=False
+                )
+             except Exception:
+                 messages.warning(request, "El perfil de Exponente fue eliminado, pero no se pudo enviar el correo de notificación.")
+
+        # 🔹 Cerrar sesión del usuario
+        logout(request)
+
+        messages.success(request, "✅ Tu perfil de Exponente y tus inscripciones han sido eliminadas correctamente. Hemos cerrado tu sesión.")
+        return redirect('pagina_principal')
+
+
 
 
 ########### VER INFORMACIÓN EVENTO ###########

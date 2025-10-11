@@ -13,7 +13,6 @@
 <body>
     <div class="login-wrapper d-flex align-items-center justify-content-center">
         <div class="login-card d-flex">
-            <!-- Imagen o logo con texto debajo -->
             <div class="login-image col-md-6 d-none d-md-flex flex-column align-items-center justify-content-center" style="color: white;">
                 <img src="{% static 'img/favicon.png' %}" alt="Logo Event-Soft" class="mb-3" style="max-width: 500px;">
                 <h3 class="text-center">Event-Soft</h3>
@@ -21,20 +20,27 @@
             </div>
 
 
-            <!-- Formulario -->
             <div class="login-box col-md-6 ">
                 <h5 class="text-muted text-center m-5">Inicia sesión con tus credenciales</h5>
 
                 <form method="post" novalidate>
                     {% csrf_token %}
                     <div class="form-group">
-                        <input type="text" class="form-control text-center" id="email_username" name="email_username"
-                               placeholder="Correo o nombre de usuario" required>
+                        <input type="text" class="form-control text-center" id="email_username" name="email_username" placeholder="Correo o nombre de usuario" required>
                     </div>
                     <div class="form-group">
-                        <input type="password" class="form-control text-center" id="password" name="password"
-                               placeholder="Contraseña" required>
+                        <input type="password" class="form-control text-center" id="password" name="password" placeholder="Contraseña" required>
                     </div>
+                    <div class="form-group">
+                        <label for="role" class="text-muted">Seleccionar rol</label>
+                        <select id="role" name="role" class="form-control">
+                            <option value="ASISTENTE">Asistente</option>
+                            <option value="PARTICIPANTE">Participante</option>
+                            <option value="EVALUADOR">Evaluador</option>
+                            <option value="ADMIN_EVENTO">Administrador de evento</option>
+                        </select>
+                    </div>
+
                     <button type="submit" class="btn btn-success btn-block ">Iniciar Sesión</button>
                 </form>
 
@@ -55,3 +61,4 @@
     
 </body>
 </html>
+

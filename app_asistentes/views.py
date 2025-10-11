@@ -20,7 +20,7 @@ import os
 from django.core.files.base import ContentFile
 from io import BytesIO
 from django.utils.decorators import method_decorator
-from principal_eventos.decorador import asistente_required
+from principal_eventos.decorador import asistente_required, visitor_required
 from django.views.generic import DetailView
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -32,6 +32,9 @@ from app_participantes.models import ParticipanteEvento
 from app_evaluadores.models import EvaluadorEvento
 from django.db.models import Q
 from django.db import models
+from django.contrib.auth import logout
+from django.db import transaction
+
 
 
 
@@ -90,12 +93,12 @@ class DashboardAsistenteView(View):
 
 
 
-
 ###### CREACIÓN DE ASISTENTE ######
+@method_decorator(visitor_required, name='dispatch') 
 class AsistenteCreateView(View):
     def get(self, request, pk):
         evento = get_object_or_404(Evento, pk=pk)
-        form = AsistenteForm()
+        form = AsistenteForm() # Asume que AsistenteForm está importado
         es_de_pago = evento.eve_tienecosto.lower() == "de pago"
 
         return render(request, 'crear_asistente.html', {
@@ -108,14 +111,7 @@ class AsistenteCreateView(View):
         evento = get_object_or_404(Evento, pk=pk)
         form = AsistenteForm(request.POST, request.FILES)
         es_de_pago = evento.eve_tienecosto.lower() == "de pago"
-
-        # 🔹 Validar capacidad disponible
-        if evento.eve_capacidad <= 0:
-            messages.error(request, "❌ No hay más cupos disponibles para este evento.")
-            return render(request, 'crear_asistente.html', {
-                'form': form, 'evento': evento, 'es_de_pago': es_de_pago
-            })
-
+        
         # 🔹 Validar comprobante si el evento es de pago
         if es_de_pago and not request.FILES.get('asi_eve_soporte'):
             messages.error(request, "⚠️ Debe cargar una imagen del comprobante de pago para este evento.")
@@ -124,118 +120,190 @@ class AsistenteCreateView(View):
             })
 
         if form.is_valid():
-            cedula = form.cleaned_data['cedula']
-            first_name = form.cleaned_data['first_name']
-            last_name = form.cleaned_data['last_name']
-            email = form.cleaned_data['email']
-            telefono = form.cleaned_data['telefono']
-            username = form.cleaned_data['username']
+            try:
+                with transaction.atomic(): # Iniciar transacción para asegurar atomicidad
+                    cedula = form.cleaned_data['cedula']
+                    first_name = form.cleaned_data['first_name']
+                    last_name = form.cleaned_data['last_name']
+                    email = form.cleaned_data['email']
+                    telefono = form.cleaned_data['telefono']
+                    username = form.cleaned_data['username']
+                    
+                    # 🔹 Buscar usuario existente por cédula, correo o username
+                    usuario = Usuario.objects.filter(
+                        Q(cedula=cedula) | Q(email=email) | Q(username=username)
+                    ).first()
 
-            # 🔹 Buscar usuario existente por cédula, correo o username
-            usuario = Usuario.objects.filter(
-                models.Q(cedula=cedula) | models.Q(email=email) | models.Q(username=username)
-            ).first()
+                    creado = False
 
-            if usuario:
-                # ✅ Si existe, se actualiza la info y se reutiliza
-                usuario.first_name = first_name
-                usuario.last_name = last_name
-                usuario.telefono = telefono
-                usuario.email = email
-                usuario.username = username  # mantenemos el mismo username
-                usuario.save(update_fields=['first_name', 'last_name', 'telefono', 'email', 'username'])
+                    if usuario:
+                        # Usuario existe. Primero, se verifica si ya tiene CUALQUIERA de los roles en este evento.
+                        
+                        # 🔑 VERIFICACIÓN DE ROLES CRUZADA (CORRECCIÓN)
+                        
+                        # 1. Verificar si ya es Participante en este evento
+                        if ParticipanteEvento.objects.filter(
+                            par_eve_evento_fk=evento,
+                            par_eve_participante_fk__usuario=usuario
+                        ).exists():
+                            messages.error(request, f"🚫 Ya estás inscrito como PARTICIPANTE en el evento \"{evento.eve_nombre}\". No puedes registrarte también como Asistente.")
+                            return render(request, 'crear_asistente.html', {
+                                'form': form, 'evento': evento, 'es_de_pago': es_de_pago
+                            })
 
-                asistente, _ = Asistente.objects.get_or_create(usuario=usuario)
-                password_plana = "Tu contraseña actual"
-            else:
-                # ✅ Crear nuevo usuario y asistente solo si no existe
-                password_plana = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
-                usuario = Usuario.objects.create(
-                    username=username,
-                    first_name=first_name,
-                    last_name=last_name,
-                    email=email,
-                    telefono=telefono,
-                    cedula=cedula,
-                    is_superuser=False,
-                    is_staff=False,
-                    is_active=True,
-                    date_joined=timezone.now(),
-                    rol=Usuario.Roles.ASISTENTE,
-                    password=make_password(password_plana),
-                )
-                asistente = Asistente.objects.create(usuario=usuario)
+                        # 2. Verificar si ya es Evaluador en este evento
+                        if EvaluadorEvento.objects.filter(
+                            eva_eve_evento_fk=evento,
+                            eva_eve_evaluador_fk__usuario=usuario
+                        ).exists():
+                            messages.error(request, f"🚫 Ya estás inscrito como EVALUADOR en el evento \"{evento.eve_nombre}\". No puedes registrarte también como Asistente.")
+                            return render(request, 'crear_asistente.html', {
+                                'form': form, 'evento': evento, 'es_de_pago': es_de_pago
+                            })
+                        
+                        # Si pasa las verificaciones de roles cruzados...
+                        
+                        # ✅ Si existe, se actualiza la info y se reutiliza
+                        usuario.first_name = first_name
+                        usuario.last_name = last_name
+                        usuario.telefono = telefono
+                        usuario.email = email
+                        usuario.username = username
+                        usuario.cedula = cedula 
+                        
+                        # Cambiar el rol principal si es necesario
+                        if usuario.rol != Usuario.Roles.ASISTENTE:
+                            usuario.rol = Usuario.Roles.ASISTENTE
+                            
+                        usuario.save(update_fields=['first_name', 'last_name', 'telefono', 'email', 'username', 'cedula', 'rol'])
 
-            # 🔹 Verificar si ya está inscrito en este mismo evento
-            if AsistenteEvento.objects.filter(
-                asi_eve_evento_fk=evento,
-                asi_eve_asistente_fk=asistente
-            ).exists():
-                messages.warning(request, "⚠️ Ya estás inscrito como asistente en este evento.")
+                        # Obtener o crear el perfil de Asistente asociado
+                        # get_or_create devuelve una tupla (objeto, creado)
+                        asistente, asistente_creado = Asistente.objects.get_or_create(usuario=usuario) 
+                        
+                        password_plana = "Tu contraseña actual"
+                    else:
+                        # ✅ Crear nuevo usuario y asistente solo si no existe
+                        creado = True
+                        password_plana = ''.join(random.choices(string.ascii_letters + string.digits, k=12))
+                        usuario = Usuario.objects.create(
+                            username=username,
+                            first_name=first_name,
+                            last_name=last_name,
+                            email=email,
+                            telefono=telefono,
+                            cedula=cedula,
+                            is_superuser=False,
+                            is_staff=False,
+                            is_active=True,
+                            date_joined=timezone.now(),
+                            rol=Usuario.Roles.ASISTENTE,
+                            password=make_password(password_plana),
+                        )
+                        asistente = Asistente.objects.create(usuario=usuario)
+
+                    # 🔹 Validar capacidad disponible (Se hace aquí para que sea dentro de la transacción)
+                    if evento.eve_capacidad <= 0:
+                        messages.error(request, "❌ No hay más cupos disponibles para este evento.")
+                        return render(request, 'crear_asistente.html', {
+                            'form': form, 'evento': evento, 'es_de_pago': es_de_pago
+                        })
+
+
+                    # 🔹 Verificar si ya está inscrito en este mismo evento como Asistente
+                    if AsistenteEvento.objects.filter(
+                        asi_eve_evento_fk=evento,
+                        asi_eve_asistente_fk=asistente
+                    ).exists():
+                        messages.warning(request, "⚠️ Ya estás inscrito como asistente en este evento.")
+                        return render(request, 'crear_asistente.html', {
+                            'form': form, 'evento': evento, 'es_de_pago': es_de_pago
+                        })
+
+                    # 🔹 Manejar comprobante y estado
+                    documento_pago = request.FILES.get('asi_eve_soporte') if es_de_pago else None
+                    estado = "Pendiente" if es_de_pago else "Aprobado"
+
+                    # 🔹 Generar clave y QR solo si el evento NO es de pago
+                    clave = ""
+                    qr_img_file = None
+                    qr_bytes = None
+                    qr_filename = None
+
+                    if not es_de_pago:
+                        clave = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+                        qr_data = f"Asistente: {first_name} {last_name}\nEvento: {evento.eve_nombre}\nClave: {clave}"
+                        qr = qrcode.make(qr_data)
+                        buffer = BytesIO()
+                        qr.save(buffer, format='PNG')
+                        qr_bytes = buffer.getvalue()
+                        qr_filename = f"qr_{cedula}_{evento.pk}.png"
+                        qr_img_file = ContentFile(qr_bytes, name=qr_filename)
+
+                    # 🔹 Crear registro de participación
+                    AsistenteEvento.objects.create(
+                        asi_eve_evento_fk=evento,
+                        asi_eve_asistente_fk=asistente,
+                        asi_eve_estado=estado,
+                        asi_eve_clave=clave,
+                        asi_eve_qr=qr_img_file if qr_img_file else None,
+                        asi_eve_soporte=documento_pago,
+                        asi_eve_fecha_hora=timezone.now(),
+                    )
+
+                    # 🔹 Reducir capacidad disponible
+                    evento.eve_capacidad -= 1
+                    evento.save(update_fields=['eve_capacidad'])
+
+                    # 🔹 Enviar correo con credenciales
+                    subject = f"🎟️ Registro exitoso - Evento \"{evento.eve_nombre}\""
+                    
+                    if creado:
+                        body = (
+                            f"Hola Asistente {first_name} {last_name},\n\n"
+                            f"Tu registro al evento \"{evento.eve_nombre}\" fue exitoso.\n\n"
+                            f"Tu cuenta fue creada. Credenciales de acceso:\n"
+                            f"- Correo: {email}\n"
+                            f"- Contraseña generada: {password_plana}\n\n"
+                        )
+                    else:
+                        body = (
+                            f"Hola Asistente {first_name} {last_name},\n\n"
+                            f"Tu registro al evento \"{evento.eve_nombre}\" fue exitoso.\n\n"
+                            f"Ya tenías una cuenta. Credenciales de acceso:\n"
+                            f"- Correo: {email}\n"
+                            f"- Contraseña: La que usas actualmente.\n\n"
+                        )
+
+                    if not es_de_pago:
+                        body += (
+                            f"Tu clave de acceso al evento es: {clave}\n"
+                            f"Adjunto encontrarás tu código QR para el ingreso.\n\n"
+                        )
+
+                    body += "¡Gracias por registrarte!\nEquipo de Event-Soft."
+
+                    email_msg = EmailMessage(subject, body, DEFAULT_FROM_EMAIL, [email]) 
+                    if not es_de_pago and qr_bytes and qr_filename:
+                        email_msg.attach(qr_filename, qr_bytes, 'image/png')
+                    
+                    try:
+                        email_msg.send(fail_silently=False)
+                    except Exception as e:
+                        messages.warning(request, f"Asistente registrado, pero no se pudo enviar el correo: {e}")
+
+
+                    messages.success(request, f"✅ Te has inscrito correctamente al evento \"{evento.eve_nombre}\".")
+                    return redirect('pagina_principal')
+
+            except Exception as e:
+                # Si ocurre cualquier error en la transacción
+                messages.error(request, f"Ocurrió un error inesperado al registrarte: {str(e)}")
                 return render(request, 'crear_asistente.html', {
-                    'form': form, 'evento': evento, 'es_de_pago': es_de_pago
+                    'form': form,
+                    'evento': evento,
+                    'es_de_pago': es_de_pago
                 })
-
-            # 🔹 Manejar comprobante y estado
-            documento_pago = request.FILES.get('asi_eve_soporte') if es_de_pago else None
-            estado = "Pendiente" if es_de_pago else "Aprobado"
-
-            # 🔹 Generar clave y QR solo si el evento NO es de pago
-            clave = ""
-            qr_img_file = None
-            qr_bytes = None
-            qr_filename = None
-
-            if not es_de_pago:
-                clave = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
-                qr_data = f"Asistente: {first_name} {last_name}\nEvento: {evento.eve_nombre}\nClave: {clave}"
-                qr = qrcode.make(qr_data)
-                buffer = BytesIO()
-                qr.save(buffer, format='PNG')
-                qr_bytes = buffer.getvalue()
-                qr_filename = f"qr_{cedula}_{evento.pk}.png"
-                qr_img_file = ContentFile(qr_bytes, name=qr_filename)
-
-            # 🔹 Crear registro de participación
-            AsistenteEvento.objects.create(
-                asi_eve_evento_fk=evento,
-                asi_eve_asistente_fk=asistente,
-                asi_eve_estado=estado,
-                asi_eve_clave=clave,
-                asi_eve_qr=qr_img_file if qr_img_file else None,
-                asi_eve_soporte=documento_pago,
-                asi_eve_fecha_hora=timezone.now(),
-            )
-
-            # 🔹 Reducir capacidad disponible
-            evento.eve_capacidad -= 1
-            evento.save(update_fields=['eve_capacidad'])
-
-            # 🔹 Enviar correo con credenciales
-            subject = f"🎟️ Registro exitoso - Evento \"{evento.eve_nombre}\""
-            body = (
-                f"Hola {first_name},\n\n"
-                f"Tu registro al evento \"{evento.eve_nombre}\" fue exitoso.\n\n"
-                f"Credenciales de acceso:\n"
-                f"- Correo: {email}\n"
-                f"- Contraseña: {password_plana}\n\n"
-            )
-
-            if not es_de_pago:
-                body += (
-                    f"Tu clave de acceso al evento es: {clave}\n"
-                    f"Adjunto encontrarás tu código QR para el ingreso.\n\n"
-                )
-
-            body += "¡Gracias por registrarte!\nEquipo de Event-Soft."
-
-            email_msg = EmailMessage(subject, body, DEFAULT_FROM_EMAIL, [email])
-            if not es_de_pago and qr_bytes and qr_filename:
-                email_msg.attach(qr_filename, qr_bytes, 'image/png')
-            email_msg.send(fail_silently=False)
-
-            messages.success(request, f"✅ Te has inscrito correctamente al evento \"{evento.eve_nombre}\".")
-            return redirect('pagina_principal')
 
         # 🔹 Si el formulario no es válido
         return render(request, 'crear_asistente.html', {
@@ -243,7 +311,6 @@ class AsistenteCreateView(View):
             'evento': evento,
             'es_de_pago': es_de_pago
         })
-
 
 
 ####### CAMBIO PASSWORD ASISTENTE ######
@@ -277,11 +344,11 @@ class CambioPasswordAsistenteView(View):
         messages.success(request, "✅ Contraseña cambiada correctamente.")
         return redirect('dashboard_asistente')
 
-
 ####### ELIMINAR DATOS ASISTENTE ######
 @method_decorator(asistente_required, name='dispatch')
 class EliminarAsistenteView(View):
     def get(self, request, asistente_id):
+        # Aseguramos que el ID del asistente coincida con el usuario logueado por seguridad (aunque asistente_required ya ayuda)
         asistente = get_object_or_404(Asistente, id=asistente_id)
         usuario = asistente.usuario
 
@@ -298,9 +365,9 @@ class EliminarAsistenteView(View):
             )
             return redirect('pagina_principal')
 
-        # 🔹 Liberar cupos solo de eventos aprobados
+        # 🔹 Liberar cupos solo de eventos pendientes (Mantenemos esta lógica)
         for inscripcion in inscripciones:
-            if inscripcion.asi_eve_estado == "Aprobado":
+            if inscripcion.asi_eve_estado == "Pendiente":
                 evento = inscripcion.asi_eve_evento_fk
                 evento.eve_capacidad += 1
                 evento.save(update_fields=["eve_capacidad"])
@@ -308,33 +375,40 @@ class EliminarAsistenteView(View):
         # 🔹 Obtener el último evento inscrito (para referencia en el correo)
         ultimo_evento = inscripciones.first()
         nombre_evento = ultimo_evento.asi_eve_evento_fk.eve_nombre if ultimo_evento else "uno de nuestros eventos"
+        
+        # 🔑 PASO 1: ELIMINAR LA RELACIÓN (Perfil) ASISTENTE
+        # Esto elimina automáticamente todas las inscripciones en AsistenteEvento (por CASCADE)
+        asistente.delete()         
 
-        # 🔹 Enviar correo antes de eliminar
+
+        # 🔹 Enviar correo antes de eliminar (Mantenemos la lógica de envío)
         if usuario.email:
-            send_mail(
-                subject='🗑️ Notificación de eliminación de cuenta como Asistente',
-                message=(
-                    f'Estimado/a {usuario.first_name},\n\n'
-                    f'Le informamos que su cuenta ha sido eliminada correctamente de Event-Soft.\n\n'
-                    f'Todos sus datos, incluyendo sus inscripciones en eventos como "{nombre_evento}", '
-                    f'han sido eliminados por razones de seguridad.\n\n'
-                    f'Si desea volver a participar, puede registrarse nuevamente en cualquier momento.\n\n'
-                    f'Atentamente,\nEquipo de organización de eventos.'
-                ),
-                from_email=DEFAULT_FROM_EMAIL,
-                recipient_list=[usuario.email],
-                fail_silently=False
-            )
+             # Manejo de fallas de envío para evitar errores críticos
+             try:
+                send_mail(
+                    subject='🗑️ Notificación de eliminación de perfil como Asistente', # Título ajustado
+                    message=(
+                        f'Estimado/a {usuario.first_name},\n\n'
+                        f'Le informamos que su perfil de **Asistente** ha sido eliminado correctamente de Event-Soft.\n\n'
+                        f'Todos sus datos de inscripción en eventos como "{nombre_evento}" '
+                        f'han sido eliminados. **Su cuenta de usuario principal no ha sido eliminada**.\n\n'
+                        f'Si desea volver a inscribirse como Asistente en el futuro, puede hacerlo usando su cuenta existente.\n\n'
+                        f'Atentamente,\nEquipo de organización de eventos.'
+                    ),
+                    from_email=DEFAULT_FROM_EMAIL,
+                    recipient_list=[usuario.email],
+                    fail_silently=False
+                )
+             except Exception:
+                 messages.warning(request, "El perfil de Asistente fue eliminado, pero no se pudo enviar el correo de notificación.")
+        
+        # 🔹 Cerrar sesión del usuario (Necesario para recargar la sesión sin el rol de Asistente)
+        # Solo se elimina la información de la sesión, no el usuario.
+        logout(request) # Usamos logout en lugar de flush para limpiar la sesión de forma segura y borrar cookies de Auth.
 
-        # 🔹 Cerrar sesión del usuario
-        request.session.flush()
 
-        # 🔹 Eliminar usuario (y asistente por cascada)
-        usuario.delete()
-
-        messages.success(request, "✅ Tu cuenta y tus inscripciones han sido eliminadas correctamente.")
+        messages.success(request, "✅ Tu perfil de Asistente y tus inscripciones han sido eliminadas correctamente. Hemos cerrado tu sesión.")
         return redirect('pagina_principal')
-
 
 
 

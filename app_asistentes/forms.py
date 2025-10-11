@@ -27,7 +27,7 @@ class AsistenteForm(forms.ModelForm):
         widget=forms.EmailInput(attrs={
             'class': 'form-control',
             'placeholder': 'tu@email.com',
-            'required': True
+            'required': True 
         })
     )
 
@@ -89,7 +89,7 @@ class AsistenteForm(forms.ModelForm):
 class EditarUsuarioAsistenteForm(forms.ModelForm):
     class Meta:
         model = Usuario
-        fields = ['first_name', 'last_name', 'email', 'telefono']
+        fields = ['first_name', 'last_name', 'telefono']
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),

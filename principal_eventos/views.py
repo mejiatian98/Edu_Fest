@@ -27,8 +27,8 @@ User = get_user_model()
     
 
 ######### LOGIN Y LOGOUT #########
-
 def login_view(request):
+    # Lógica de redirección inicial si el usuario ya está logueado (sin cambios)
     rol = request.session.get('rol')
     if rol == Usuario.Roles.ADMIN_EVENTO:
         return redirect('dashboard_admin')
@@ -44,67 +44,93 @@ def login_view(request):
     if request.method == 'POST':
         identificador = request.POST.get('email_username')
         contrasena = request.POST.get('password')
+        rol_seleccionado = request.POST.get('role') 
+
+        # 🔑 CORRECCIÓN: Inicializar la variable 'user' antes del bloque 'try'
+        user = None 
 
         try:
-            usuario_obj = Usuario.objects.get(Q(email=identificador) | Q(username=identificador))
+            # Buscar usuario por email o username
+            usuario_obj = Usuario.objects.get(Q(email__iexact=identificador) | Q(username__iexact=identificador))
         except Usuario.DoesNotExist:
             usuario_obj = None
 
         if usuario_obj:
-            # 👉 Revisar antes si es primer acceso
+            
+            # 2. Revisar si es primer acceso
             primer_acceso = usuario_obj.last_login is None
 
+            # 3. Autenticar el usuario
             user = authenticate(request, username=usuario_obj.username, password=contrasena)
+            
             if user:
                 login(request, user)
                 user.is_active = True
                 user.save(update_fields=["is_active"])
-                # No necesitas guardar el rol si usas request.user.rol directamente
+                
+                # Nueva Lógica de Redirección: Valida la existencia del perfil de rol (la relación)
+                
+                if rol_seleccionado == Usuario.Roles.ADMIN_EVENTO:
+                    if hasattr(user, 'administrador_evento'): 
+                        request.session['admin_id'] = user.administrador_evento.id
+                        request.session['admin_nombre'] = user.username
+                        request.session['rol'] = Usuario.Roles.ADMIN_EVENTO 
+                        if primer_acceso:
+                            return redirect('cambio_password_admin')
+                        return redirect('dashboard_admin')
+                    else:
+                        error = "No tienes el perfil de Administrador de Evento asociado a esta cuenta."
 
+                elif rol_seleccionado == Usuario.Roles.EVALUADOR:
+                    if hasattr(user, 'evaluador'): 
+                        request.session['evaluador_id'] = user.evaluador.id
+                        request.session['evaluador_nombre'] = user.username
+                        request.session['rol'] = Usuario.Roles.EVALUADOR
+                        if primer_acceso:
+                            return redirect('cambio_password_evaluador')
+                        return redirect('dashboard_evaluador')
+                    else:
+                        error = "No tienes el perfil de Evaluador asociado a esta cuenta."
 
-                # ADMIN
-                if hasattr(user, 'administrador_evento'):
-                    request.session['admin_id'] = user.administrador_evento.id
+                elif rol_seleccionado == Usuario.Roles.PARTICIPANTE:
+                    if hasattr(user, 'participante'): 
+                        request.session['participante_id'] = user.participante.id
+                        request.session['participante_nombre'] = user.username
+                        request.session['rol'] = Usuario.Roles.PARTICIPANTE
+                        if primer_acceso:
+                            return redirect('cambio_password_participante')
+                        return redirect('dashboard_participante')
+                    else:
+                        error = "No tienes el perfil de Participante asociado a esta cuenta."
 
-                    request.session['admin_nombre'] = user.username
-                    if primer_acceso:
-                        return redirect('cambio_password_admin')
-                    return redirect('dashboard_admin')
+                elif rol_seleccionado == Usuario.Roles.ASISTENTE:
+                    if hasattr(user, 'asistente'): 
+                        request.session['asistente_id'] = user.asistente.id
+                        request.session['asistente_nombre'] = user.username
+                        request.session['rol'] = Usuario.Roles.ASISTENTE
+                        if primer_acceso:
+                            return redirect('cambio_password_asistente')
+                        return redirect('dashboard_asistente')
+                    else:
+                        error = "No tienes el perfil de Asistente asociado a esta cuenta."
+                
+                # Si error está vacío, significa que el usuario pasó la autenticación pero 
+                # el rol seleccionado no tenía una comprobación específica o falló.
+                if not error:
+                    # Si el rol era correcto, pero no se redirigió (debería ser raro, pero es un fallback)
+                    # O si el usuario es un Superuser/Staff que no tiene un perfil específico
+                    error = "El rol seleccionado no es válido o no tiene el perfil asociado."
 
-
-                # EVALUADOR
-                elif hasattr(user, 'evaluador'):
-                    request.session['evaluador_id'] = user.evaluador.id
-                    request.session['evaluador_nombre'] = user.username
-                    if primer_acceso:
-                        return redirect('cambio_password_evaluador')
-                    return redirect('dashboard_evaluador')
-
-                # PARTICIPANTE
-                elif hasattr(user, 'participante'):
-                    request.session['participante_id'] = user.participante.id
-                    request.session['participante_nombre'] = user.username
-                    if primer_acceso:
-                        return redirect('cambio_password_participante')
-                    return redirect('dashboard_participante')
-
-                # ASISTENTE
-                elif hasattr(user, 'asistente'):
-                    request.session['asistente_id'] = user.asistente.id
-                    request.session['asistente_nombre'] = user.username
-                    if primer_acceso:
-                        return redirect('cambio_password_asistente')
-                    return redirect('dashboard_asistente')
-
-                else:
-                    error = "Rol no reconocido."
             else:
                 error = "Contraseña incorrecta."
         else:
             error = "Correo o nombre de usuario no encontrado."
+            
+        # 🔑 CORRECCIÓN: Si hubo un error y se definió 'user' (es decir, la autenticación falló 
+        # pero 'user' se definió como None en 'authenticate'),
+        # no necesitas un fallback aquí, ya que el error se maneja en el render final.
 
     return render(request, 'login.html', {'error': error})
-
 
 ########### Logout ###########
 
