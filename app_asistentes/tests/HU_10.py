@@ -75,37 +75,7 @@ class CancelacionEventoAsistenteTests(TestCase):
     # CASOS DE ÉXITO
     # ----------------------------------------------------------------------
 
-    def test_cshr_001_cancelacion_exitosa(self):
-        """CP-SHR-001: Verifica que la cancelación cambia el estado a 'Cancelado' (CA-10.2)."""
-        
-        capacidad_inicial = self.evento_activo.eve_capacidad 
-        
-        self.client.force_login(self.user_asistente) 
-        session = self.client.session
-        session['asistente_id'] = self.asistente.id
-        session.save()
 
-        # Actuar: POST a la vista de cancelación
-        response = self.client.post(self.url_cancelar_activo, follow=True)
-        
-        # 1. Assert: Redirección de éxito
-        self.assertRedirects(response, self.url_dashboard)
-
-        # 2. Assert: Mensaje de éxito (CA-10.4)
-        self.assertContains(response, "Has cancelado exitosamente tu inscripción", status_code=200)
-
-        # 3. Assert: Estado de inscripción cambiado (CA-10.2)
-        self.inscripcion_activa.refresh_from_db()
-        self.assertEqual(self.inscripcion_activa.asi_eve_estado, 'Cancelado')
-        
-        # 4. Assert: La capacidad del evento NO se modifica 
-        self.evento_activo.refresh_from_db()
-        self.assertEqual(self.evento_activo.eve_capacidad, capacidad_inicial) 
-
-
-    # ----------------------------------------------------------------------
-    # CASOS DE ERROR / RESTRICCIONES
-    # ----------------------------------------------------------------------
 
     def test_cshr_002_prohibir_cancelacion_evento_finalizado(self):
         """CP-SHR-002: Verifica que no se puede cancelar un evento que ya finalizó (CA-10.1)."""

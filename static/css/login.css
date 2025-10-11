@@ -15,7 +15,7 @@ body {
     width: 100%;
     max-width: 420px;
     padding: 40px;
-    border-radius: 12px;
+    border-radius: 0 12px 12px 0;
     background-color: #d3d3d3;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.08);
     text-align: center;
@@ -68,15 +68,18 @@ body {
 .login-card {
     max-width: 1050px;
     border-radius: 30px ;
-    overflow: hidden;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.08);
+    box-shadow: 20px 10px 15px rgba(0, 0, 0, 0.582);
 }
 .login-image {
     background: linear-gradient(to bottom, #4cd137, #006400); /* degradado verde */
     display: flex;
+    box-shadow: 5px 5px 10px  rgba(0, 0, 0, 0.5);
+    z-index: 9999;
     align-items: center;
     justify-content: center;
     padding: 30px;
+    border-radius: 12px 0 0 12px;
 }
 .login-image img {
     max-width: 100%;

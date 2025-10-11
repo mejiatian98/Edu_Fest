@@ -58,17 +58,13 @@ class EditarUsuarioAdministradorForm(forms.ModelForm):
         model = Usuario
         fields = ['username', 'first_name', 'last_name', 'telefono']
         widgets = {
-            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese nombre de usuario'}),
+            'username': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese nombre de usuario', 'readonly': True}),
             'first_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su nombre'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su apellido'}),
             'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingrese su teléfono', 'type': 'number'}),
         }
 
-    def clean_username(self):
-        username = self.cleaned_data['username']
-        if Usuario.objects.filter(username=username).exists():
-            raise forms.ValidationError("Este nombre de usuario ya está registrado.")
-        return username
+
     
 
 

@@ -25,12 +25,12 @@ class Evento(models.Model):
     eve_fecha_fin = models.DateField()
     eve_estado = models.CharField(max_length=45)
     eve_cancelacion_iniciada = models.DateTimeField(null=True, blank=True) 
-    eve_imagen = models.ImageField(upload_to='upload/')
+    eve_imagen = models.ImageField(upload_to='upload/', verbose_name="Imagen/Logo del Evento")
     eve_administrador_fk = models.ForeignKey('app_usuarios.AdministradorEvento', on_delete=models.CASCADE)
     eve_tienecosto = models.CharField(max_length=45)
     eve_capacidad = models.IntegerField()
-    eve_programacion = models.FileField(upload_to='upload/')
-    eve_informacion_tecnica = models.FileField(upload_to='upload/', null=True, blank=True)
+    eve_programacion = models.FileField(upload_to='upload/', verbose_name="Archivo de Programación")
+    eve_informacion_tecnica = models.FileField(upload_to='upload/', null=True, blank=True, verbose_name="Información Técnica Opcional")
     preinscripcion_habilitada_asistentes = models.BooleanField(default=False)
     preinscripcion_habilitada_participantes = models.BooleanField(default=False)
     preinscripcion_habilitada_evaluadores = models.BooleanField(default=False)
@@ -67,7 +67,7 @@ from django.db import models
 from app_admin_eventos.models import Evento
 from django.core.exceptions import ValidationError
 
-    
+
 
 class AsistenteEvento(models.Model):
     asi_eve_asistente_fk = models.ForeignKey('app_usuarios.Asistente', on_delete=models.CASCADE)
@@ -79,23 +79,47 @@ class AsistenteEvento(models.Model):
     asi_eve_clave = models.CharField(max_length=45)
 
     def clean(self):
+        
+        from app_evaluadores.models import EvaluadorEvento
+        from app_participantes.models import ParticipanteEvento
+        """
+        Realiza validaciones para asegurar que el usuario no esté ya inscrito 
+        en el mismo evento con otro rol (Participante o Evaluador).
+        La unicidad como Asistente se maneja en la clase Meta.
+        """
+        # Obtenemos el objeto Usuario base a través del perfil Asistente
         usuario = self.asi_eve_asistente_fk.usuario
         evento = self.asi_eve_evento_fk
 
-        from app_evaluadores.models import EvaluadorEvento
-        from app_participantes.models import ParticipanteEvento
-
+        # 1. Validación Cruzada: El Usuario no puede ser Participante en este Evento
         if ParticipanteEvento.objects.filter(par_eve_participante_fk__usuario=usuario, par_eve_evento_fk=evento).exists():
-            raise ValidationError("Este usuario ya está inscrito como Participante en este evento.")
+            raise ValidationError(
+                {'asi_eve_asistente_fk': "Este usuario ya está inscrito como Participante en este evento."}
+            )
+        
+        # 2. Validación Cruzada: El Usuario no puede ser Evaluador en este Evento
         if EvaluadorEvento.objects.filter(eva_eve_evaluador_fk__usuario=usuario, eva_eve_evento_fk=evento).exists():
-            raise ValidationError("Este usuario ya está inscrito como Evaluador en este evento.")
-        if AsistenteEvento.objects.filter(asi_eve_asistente_fk__usuario=usuario, asi_eve_evento_fk=evento).exclude(pk=self.pk).exists():
-            raise ValidationError("Este usuario ya está inscrito como Asistente en este evento.")
+            raise ValidationError(
+                {'asi_eve_asistente_fk': "Este usuario ya está inscrito como Evaluador en este evento."}
+            )
+            
+        # Nota: La validación de unicidad propia (que no se inscriba dos veces como Asistente)
+        # se manejará principalmente por unique_together en Meta, lo cual es más eficiente.
+        # Eliminamos la línea explícita de unicidad propia del clean() para simplificar,
+        # confiando en la restricción de base de datos.
 
     def save(self, *args, **kwargs):
-        self.clean()
+        """
+        Remueve la llamada explícita a self.clean() para seguir el flujo estándar de Django.
+        """
         super().save(*args, **kwargs)
 
+    class Meta:
+        # **Clave de la Unicidad:** Esta restricción garantiza que un mismo
+        # perfil de Asistente no pueda tener dos entradas para el mismo Evento
+        unique_together = ('asi_eve_asistente_fk', 'asi_eve_evento_fk')
+        verbose_name = "Inscripción de Asistente"
+        verbose_name_plural = "Inscripciones de Asistentes"
 
 
 
@@ -103,8 +127,6 @@ from django.db import models
 from app_admin_eventos.models import Evento, Criterio
 from app_usuarios.models import Participante
 from django.core.exceptions import ValidationError
-
-
 
 
 
@@ -119,6 +141,7 @@ class Calificacion(models.Model):
 
 
 
+
 class EvaluadorEvento(models.Model):
     eva_eve_evaluador_fk = models.ForeignKey('app_usuarios.Evaluador', on_delete=models.CASCADE)
     eva_eve_evento_fk = models.ForeignKey(Evento, on_delete=models.CASCADE)
@@ -129,31 +152,54 @@ class EvaluadorEvento(models.Model):
     eva_eve_documento = models.FileField(upload_to='upload/', null=True, blank=True)
 
     def clean(self):
+        
+        from app_asistentes.models import AsistenteEvento
+        from app_participantes.models import ParticipanteEvento
+        """
+        Realiza validaciones para asegurar que el usuario no esté ya inscrito 
+        en el mismo evento con otro rol (Asistente o Participante).
+        """
         usuario = self.eva_eve_evaluador_fk.usuario
         evento = self.eva_eve_evento_fk
 
-        from app_asistentes.models import AsistenteEvento
-        from app_participantes.models import ParticipanteEvento
-
-        
-
+        # 1. Validación Cruzada: El Usuario no puede ser Participante en este Evento
         if ParticipanteEvento.objects.filter(par_eve_participante_fk__usuario=usuario, par_eve_evento_fk=evento).exists():
-            raise ValidationError("Este usuario ya está inscrito como Participante en este evento.")
+            raise ValidationError(
+                {'eva_eve_evaluador_fk': "Este usuario ya está inscrito como Participante en este evento."}
+            )
+            
+        # 2. Validación Cruzada: El Usuario no puede ser Asistente en este Evento
         if AsistenteEvento.objects.filter(asi_eve_asistente_fk__usuario=usuario, asi_eve_evento_fk=evento).exists():
-            raise ValidationError("Este usuario ya está inscrito como Asistente en este evento.")
-        if EvaluadorEvento.objects.filter(eva_eve_evaluador_fk__usuario=usuario, eva_eve_evento_fk=evento).exclude(pk=self.pk).exists():
-            raise ValidationError("Este usuario ya está inscrito como Evaluador en este evento.")
+            raise ValidationError(
+                {'eva_eve_evaluador_fk': "Este usuario ya está inscrito como Asistente en este evento."}
+            )
+            
+        # Nota: La validación de unicidad propia ya no es necesaria en clean() porque 
+        # se utiliza `unique_together` en Meta, lo cual es más eficiente y obligatorio
+        # a nivel de base de datos.
 
     def save(self, *args, **kwargs):
-        self.clean()
+        """
+        Se elimina la llamada a self.clean().
+        Se asume que full_clean() se llama antes de save() en el flujo normal de Django.
+        """
         super().save(*args, **kwargs)
 
+    class Meta:
+        # **Clave de la Unicidad:** Garantiza que un mismo evaluador 
+        # no pueda tener dos entradas para el mismo evento.
+        unique_together = ('eva_eve_evaluador_fk', 'eva_eve_evento_fk')
+        verbose_name = "Inscripción de Evaluador"
+        verbose_name_plural = "Inscripciones de Evaluadores"
 
 
 
 from django.db import models
 from app_admin_eventos.models import Evento
 from django.core.exceptions import ValidationError
+import random
+import string
+
 
 
 class ParticipanteEvento(models.Model):
@@ -181,35 +227,51 @@ class ParticipanteEvento(models.Model):
         return f"{self.par_eve_participante_fk} - {self.par_eve_evento_fk}"
 
     def clean(self):
-        """ Validación: no permitir que el mismo usuario esté en el evento con otro rol """
+
+        from app_asistentes.models import AsistenteEvento
+        from app_evaluadores.models import EvaluadorEvento
+        """ 
+        Validación: no permitir que el mismo usuario esté en el evento con otro rol.
+        """
         usuario = self.par_eve_participante_fk.usuario
         evento = self.par_eve_evento_fk
 
-        # Importamos aquí para evitar import circular
-        from app_asistentes.models import AsistenteEvento
-        from app_evaluadores.models import EvaluadorEvento
-
+        # 1. Validación Cruzada: No puede ser Asistente
         if AsistenteEvento.objects.filter(asi_eve_asistente_fk__usuario=usuario, asi_eve_evento_fk=evento).exists():
-            raise ValidationError("Este usuario ya está inscrito como Asistente en este evento.")
+            raise ValidationError(
+                {'par_eve_participante_fk': "Este usuario ya está inscrito como Asistente en este evento."}
+            )
+            
+        # 2. Validación Cruzada: No puede ser Evaluador
         if EvaluadorEvento.objects.filter(eva_eve_evaluador_fk__usuario=usuario, eva_eve_evento_fk=evento).exists():
-            raise ValidationError("Este usuario ya está inscrito como Evaluador en este evento.")
+            raise ValidationError(
+                {'par_eve_participante_fk': "Este usuario ya está inscrito como Evaluador en este evento."}
+            )
+            
+        # 3. Validación de Unicidad Propia (Para evitar doble inscripción del mismo Participante)
+        # Se mantiene en clean() como capa defensiva, pero confiamos en `unique_together` de Meta.
         if ParticipanteEvento.objects.filter(
             par_eve_participante_fk__usuario=usuario,
             par_eve_evento_fk=evento
         ).exclude(pk=self.pk).exists():
-            raise ValidationError("Este usuario ya está inscrito como Participante en este evento.")
+            raise ValidationError(
+                {'par_eve_participante_fk': "Este usuario ya está inscrito como Participante en este evento."}
+            )
 
     def save(self, *args, **kwargs):
-        # Generar código único de proyecto si no existe y es el proyecto principal
+        # 1. Lógica para generar código único de proyecto (NO TOCADA)
+        # Solo se genera si no tiene un código y NO es miembro de otro proyecto
         if not self.par_eve_codigo_proyecto and not self.par_eve_proyecto_principal:
-            import random
-            import string
+            # Usamos random y string importados en el ámbito del módulo
             self.par_eve_codigo_proyecto = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
         
-        # Ejecutar validaciones antes de guardar
-        self.clean()
+        # 2. Ejecutar validaciones ANTES de guardar (CORRECCIÓN CLAVE)
+        # Se elimina la llamada a self.clean() que había aquí. 
+        # Si llamas a .save() directamente, debes llamar a .full_clean() antes.
+        
         super().save(*args, **kwargs)
 
+    # NO SE TOCAN los métodos @property y get_todos_miembros_proyecto ya que manejan la lógica de grupos.
     @property
     def es_lider_proyecto(self):
         """Retorna True si este participante es el líder del proyecto (no tiene proyecto_principal)"""
@@ -230,6 +292,13 @@ class ParticipanteEvento(models.Model):
             miembros = list(self.miembros_proyecto.all())
             miembros.insert(0, self)  # Agregar el líder al inicio
             return miembros
+            
+    class Meta:
+        # **Clave de la Unicidad:** Garantiza que un mismo participante 
+        # no pueda tener dos entradas para el mismo evento.
+        unique_together = ('par_eve_participante_fk', 'par_eve_evento_fk')
+        verbose_name = "Inscripción de Participante"
+        verbose_name_plural = "Inscripciones de Participantes"
 
 
 from django.db import models
@@ -247,41 +316,52 @@ class Usuario(AbstractUser):
 
     telefono = models.CharField(max_length=15, blank=True, null=True)
     rol = models.CharField(max_length=30, choices=Roles.choices, default=Roles.ASISTENTE)
+    cedula = models.CharField(max_length=20, unique=True)
+
 
     def __str__(self):
         return f"{self.username} ({self.rol})"
 
 
 class Asistente(models.Model):
-    cedula = models.CharField(max_length=20, unique=True) 
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE) 
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='asistente')
+    
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Asistente"
 
 
 class Participante(models.Model):
-    cedula = models.CharField(max_length=20, unique=True) 
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE) 
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='participante') 
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Participante"
 
 
 class Evaluador(models.Model):
-    cedula = models.CharField(max_length=20, unique=True) 
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE) 
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='evaluador') 
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Evaluador"
 
 
 class AdministradorEvento(models.Model):
-    cedula = models.CharField(max_length=20, unique=True) 
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE) 
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='administrador_evento') 
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Administrador de Evento"
 
 
 
+import uuid
+from django.db import models
+from django.utils import timezone
+
+class InvitacionAdministrador(models.Model):
+    email = models.EmailField(unique=True)
+    token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    creado_en = models.DateTimeField(default=timezone.now)
+    usado = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Invitación para {self.email}"

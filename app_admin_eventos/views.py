@@ -56,9 +56,7 @@ from app_admin_eventos.models import Evento, MemoriaEvento
 from app_asistentes.models import AsistenteEvento
 from app_participantes.models import ParticipanteEvento
 from app_evaluadores.models import EvaluadorEvento
-
-
-
+from django.contrib.auth import login
 
 
 ############ MEMORIAS DE ADMINISTRADOR ############
@@ -133,7 +131,6 @@ class MenuPrincipalView(ListView):
 
 
 
-
 ##################### --- Cambio de Contraseña Administrador --- #####################
 
 @method_decorator(admin_required, name='dispatch')
@@ -155,20 +152,24 @@ class CambioPasswordAdminView(View):
             messages.error(request, "❌ La contraseña debe tener al menos 6 caracteres.")
             return render(request, self.template_name)
 
-        id = request.session.get('id')
-        admin = get_object_or_404(AdministradorEvento, pk=id)
-        usuario =admin.usuario
+        admin_id = request.session.get('admin_id')
+        admin = get_object_or_404(AdministradorEvento, pk=admin_id)
+        usuario = admin.usuario
 
+        # 🔐 Cambiar contraseña
         usuario.set_password(password1)
-        usuario.last_login = timezone.now()  # ✅ Se actualiza solo aquí
+        usuario.last_login = timezone.now()
         usuario.save()
+
+
+
+        # ✅ Volver a autenticar al usuario
+        login(request, usuario)
 
         messages.success(request, "✅ Contraseña cambiada correctamente.")
         return redirect('dashboard_admin')
 
 
-        
-    
 
 ############################## --- Editar Administrador ---##############################
 

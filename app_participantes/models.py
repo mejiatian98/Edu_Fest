@@ -1,6 +1,9 @@
 from django.db import models
 from app_admin_eventos.models import Evento
 from django.core.exceptions import ValidationError
+import random
+import string
+
 
 
 class ParticipanteEvento(models.Model):
@@ -28,35 +31,51 @@ class ParticipanteEvento(models.Model):
         return f"{self.par_eve_participante_fk} - {self.par_eve_evento_fk}"
 
     def clean(self):
-        """ Validación: no permitir que el mismo usuario esté en el evento con otro rol """
+
+        from app_asistentes.models import AsistenteEvento
+        from app_evaluadores.models import EvaluadorEvento
+        """ 
+        Validación: no permitir que el mismo usuario esté en el evento con otro rol.
+        """
         usuario = self.par_eve_participante_fk.usuario
         evento = self.par_eve_evento_fk
 
-        # Importamos aquí para evitar import circular
-        from app_asistentes.models import AsistenteEvento
-        from app_evaluadores.models import EvaluadorEvento
-
+        # 1. Validación Cruzada: No puede ser Asistente
         if AsistenteEvento.objects.filter(asi_eve_asistente_fk__usuario=usuario, asi_eve_evento_fk=evento).exists():
-            raise ValidationError("Este usuario ya está inscrito como Asistente en este evento.")
+            raise ValidationError(
+                {'par_eve_participante_fk': "Este usuario ya está inscrito como Asistente en este evento."}
+            )
+            
+        # 2. Validación Cruzada: No puede ser Evaluador
         if EvaluadorEvento.objects.filter(eva_eve_evaluador_fk__usuario=usuario, eva_eve_evento_fk=evento).exists():
-            raise ValidationError("Este usuario ya está inscrito como Evaluador en este evento.")
+            raise ValidationError(
+                {'par_eve_participante_fk': "Este usuario ya está inscrito como Evaluador en este evento."}
+            )
+            
+        # 3. Validación de Unicidad Propia (Para evitar doble inscripción del mismo Participante)
+        # Se mantiene en clean() como capa defensiva, pero confiamos en `unique_together` de Meta.
         if ParticipanteEvento.objects.filter(
             par_eve_participante_fk__usuario=usuario,
             par_eve_evento_fk=evento
         ).exclude(pk=self.pk).exists():
-            raise ValidationError("Este usuario ya está inscrito como Participante en este evento.")
+            raise ValidationError(
+                {'par_eve_participante_fk': "Este usuario ya está inscrito como Participante en este evento."}
+            )
 
     def save(self, *args, **kwargs):
-        # Generar código único de proyecto si no existe y es el proyecto principal
+        # 1. Lógica para generar código único de proyecto (NO TOCADA)
+        # Solo se genera si no tiene un código y NO es miembro de otro proyecto
         if not self.par_eve_codigo_proyecto and not self.par_eve_proyecto_principal:
-            import random
-            import string
+            # Usamos random y string importados en el ámbito del módulo
             self.par_eve_codigo_proyecto = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
         
-        # Ejecutar validaciones antes de guardar
-        self.clean()
+        # 2. Ejecutar validaciones ANTES de guardar (CORRECCIÓN CLAVE)
+        # Se elimina la llamada a self.clean() que había aquí. 
+        # Si llamas a .save() directamente, debes llamar a .full_clean() antes.
+        
         super().save(*args, **kwargs)
 
+    # NO SE TOCAN los métodos @property y get_todos_miembros_proyecto ya que manejan la lógica de grupos.
     @property
     def es_lider_proyecto(self):
         """Retorna True si este participante es el líder del proyecto (no tiene proyecto_principal)"""
@@ -77,3 +96,12 @@ class ParticipanteEvento(models.Model):
             miembros = list(self.miembros_proyecto.all())
             miembros.insert(0, self)  # Agregar el líder al inicio
             return miembros
+            
+    class Meta:
+        # **Clave de la Unicidad:** Garantiza que un mismo participante 
+        # no pueda tener dos entradas para el mismo evento.
+        unique_together = ('par_eve_participante_fk', 'par_eve_evento_fk')
+        verbose_name = "Inscripción de Participante"
+        verbose_name_plural = "Inscripciones de Participantes"
+
+

@@ -6,55 +6,84 @@ class AsistenteForm(forms.ModelForm):
     cedula = forms.CharField(
         label="Cédula",
         max_length=20,
-        widget=forms.TextInput(
-            attrs={
-                'class': 'form-control',
-                'placeholder': 'Ingresa tu número de cédula'
-            }
-        )
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ingresa tu número de cédula',
+            'required': True
+        })
     )
 
     username = forms.CharField(
         label="Nombre de usuario",
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Nombre de usuario',
+            'required': True
+        })
     )
+
     email = forms.EmailField(
         label="Correo electrónico",
-        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@email.com'})
+        widget=forms.EmailInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'tu@email.com',
+            'required': True
+        })
     )
+
     telefono = forms.CharField(
         label="Teléfono",
-        required=False,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono'})
+        max_length=15,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Número de teléfono',
+            'required': True
+        })
     )
+
     first_name = forms.CharField(
         label="Nombre",
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu nombre'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Tu nombre',
+            'required': True
+        })
     )
+
     last_name = forms.CharField(
         label="Apellido",
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu apellido'})
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Tu apellido',
+            'required': True
+        })
+    )
+
+    asi_eve_soporte = forms.FileField(
+        label="Comprobante de pago (solo imagen)",
+        required=False,
+        widget=forms.ClearableFileInput(attrs={
+            'class': 'form-control',
+            'accept': 'image/*'
+        })
     )
 
     class Meta:
         model = Asistente
-        fields = ['cedula']
+        fields = ['cedula', 'first_name', 'last_name', 'email', 'telefono', 'username']
 
     def __init__(self, *args, **kwargs):
         self.evento = kwargs.pop('evento', None)
         super().__init__(*args, **kwargs)
 
-    def validate_unique(self):
-        exclude = self._get_validation_exclusions()
-        try:
-            self.instance.validate_unique(exclude=exclude)
-        except forms.ValidationError as e:
-            # eliminamos error de unicidad en cédula, no id
-            e.error_dict.pop('cedula', None)
-            if e.error_dict:
-                raise
+    def clean_asi_eve_soporte(self):
+        soporte = self.files.get('asi_eve_soporte')
+        if soporte and not soporte.content_type.startswith('image/'):
+            raise forms.ValidationError("Solo se permiten archivos de imagen (jpg, png, jpeg).")
+        return soporte
 
 
+    
 
 # Form para editar
 class EditarUsuarioAsistenteForm(forms.ModelForm):

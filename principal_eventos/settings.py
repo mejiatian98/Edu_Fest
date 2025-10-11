@@ -63,7 +63,8 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': ['templates','app_admin_eventos/templates/app_admin_eventos', 'app_evaluadores/templates/app_evaluadores',
-                 'app_participantes/templates/app_participantes', 'app_asistentes/templates/app_asistentes',],
+                 'app_participantes/templates/app_participantes', 'app_asistentes/templates/app_asistentes',
+                 'app_usuarios/templates/app_usuarios'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [

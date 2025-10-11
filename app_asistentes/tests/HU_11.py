@@ -4,84 +4,121 @@ Tener mayor claridad sobre los horarios y los lugares en que se desarrollará ca
 
 # app_asistentes/tests/HU_11.py
 
-from django.test import TestCase, Client
+# app_asistentes/tests/HU_11.py
+
+from django.test import TransactionTestCase, Client 
 from django.urls import reverse
 from django.contrib.messages import get_messages
 from datetime import date
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.db import connection # Necesario para ejecutar SQL crudo
+import time 
 
-# Importaciones de modelos (Ajuste las rutas según su proyecto)
+# Importaciones de modelos
 from app_usuarios.models import Usuario, Asistente, AdministradorEvento
 from app_admin_eventos.models import Evento
 from app_asistentes.models import AsistenteEvento
 
+# Importación de la conexión a la base de datos para ejecutar comandos crudos
+from django.db import connection 
 
-class AsistenteProgramacionTestCase(TestCase):
+
+class AsistenteProgramacionTestCase(TransactionTestCase):
     """
     Casos de prueba para la Historia de Usuario (HU_11).
-    Usa setUp(self) y tearDown(self) para garantizar el aislamiento y la limpieza de IDs.
+    SOLUCIÓN DEFINITIVA PARA MYSQL: Reinicia explícitamente AUTO_INCREMENT.
     """
     
+    # ----------------------------------------------------------------------
+    # SOLUCIÓN CRUCIAL Y MÁS ROBUSTA PARA MYSQL/INNODB
+    # ----------------------------------------------------------------------
+    def _reset_auto_increment(self, *app_model_names):
+        """
+        Ejecuta un comando SQL crudo para resetear el contador AUTO_INCREMENT
+        de las tablas especificadas. Esto es esencial para MySQL/InnoDB
+        al usar TransactionTestCase con IDs de clave primaria/foránea.
+        """
+        if connection.vendor == 'mysql':
+            cursor = connection.cursor()
+            for model_name in app_model_names:
+                try:
+                    # El nombre de la tabla en MySQL es típicamente: appname_modelname
+                    table_name = model_name 
+                    # Usamos `TRUNCATE` para resetear el AUTO_INCREMENT si la tabla no está vacía,
+                    # y si no está vacía, ALTER TABLE es más seguro.
+                    # Nos aseguramos de forzar el reinicio a 1.
+                    cursor.execute(f"ALTER TABLE `{table_name}` AUTO_INCREMENT = 1")
+                except Exception as e:
+                    # Esto solo es una advertencia si no se puede ejecutar
+                    print(f"Advertencia: No se pudo resetear AUTO_INCREMENT para {table_name}: {e}")
+            
     def setUp(self): 
         """ 
-        Configuración inicial: Crea todos los objetos necesarios ANTES de CADA TEST.
+        Configuración inicial.
         """
         
-        # --- AJUSTE DE UNICIDAD: Usuario Dummy (Consumirá ID 1) ---
-        self.dummy_user = Usuario.objects.create_user(
-            username='dummy_user_0', 
-            email='dummy0@test.com', 
-            password='password123', 
-            rol=Usuario.Roles.VISITANTE
+        # --- PASO 1: Reiniciar AUTO_INCREMENT antes de crear objetos ---
+        # **ESTO ES LO CLAVE**
+        # Debe reiniciar las tablas que usan IDs como clave primaria/foránea
+        # en modelos relacionados, especialmente si heredan de Usuario.
+        self._reset_auto_increment(
+            # Tabla base de usuarios
+            'app_usuarios_usuario', 
+            # Tablas de perfiles que usan el ID del usuario como clave única
+            'app_usuarios_administradorevento', 
+            'app_usuarios_asistente'
         )
         
-        # --- Configuración de Usuarios y Roles ---
+        # Generar un identificador único basado en el tiempo actual
+        # Esto mantiene la unicidad en campos de texto (username, email, cedula)
+        unique_id = str(int(time.time() * 1000)) 
         
-        # 1. Usuario para el Administrador de Evento (Consumirá ID 2)
+        # --- PASO 2: Creación de Usuarios y Roles ---
+        # El ID primario del primer Usuario creado *debería* ser 1.
+        
+        # 1. Usuario para el Administrador de Evento (Usuario ID=1)
         self.admin_user = Usuario.objects.create_user(
-            username='admin_eve', 
-            email='admin@test.com', 
+            username=f'admin_{unique_id}', 
+            email=f'admin_{unique_id}@test.com', 
             password='password123', 
             rol=Usuario.Roles.ADMIN_EVENTO
         )
-        # ESTE es el punto de fallo recurrente (IntegrityError en usuario_id=2)
+        # Este modelo usa usuario_id=1. Si el contador no se reinicia, falla.
         self.administrador = AdministradorEvento.objects.create(
             usuario=self.admin_user, 
-            cedula='100000000'
+            cedula=f'1000000{unique_id[-4:]}' 
         )
 
-        # 2. Usuario para Asistente Inscrito (Consumirá ID 3)
+        # 2. Usuario para Asistente Inscrito (Usuario ID=2)
         self.asistente_inscrito_user = Usuario.objects.create_user(
-            username='asi_inscrito', 
-            email='asi_inscrito@test.com', 
+            username=f'asi_inscrito_{unique_id}', 
+            email=f'asi_inscrito_{unique_id}_inscrito@test.com', 
             password='password123', 
             rol=Usuario.Roles.ASISTENTE
         )
         self.asistente_inscrito = Asistente.objects.create(
             usuario=self.asistente_inscrito_user, 
-            cedula='111111111'
+            cedula=f'1111111{unique_id[-4:]}' 
         )
 
-        # 3. Usuario para Asistente NO Inscrito (Consumirá ID 4)
+        # 3. Usuario para Asistente NO Inscrito (Usuario ID=3)
         self.asistente_no_inscrito_user = Usuario.objects.create_user(
-            username='asi_no_inscrito', 
-            email='asi_no_inscrito@test.com', 
+            username=f'asi_no_inscrito_{unique_id}', 
+            email=f'asi_no_inscrito_{unique_id}_no@test.com', 
             password='password123', 
             rol=Usuario.Roles.ASISTENTE
         )
         self.asistente_no_inscrito = Asistente.objects.create(
             usuario=self.asistente_no_inscrito_user, 
-            cedula='222222222'
+            cedula=f'2222222{unique_id[-4:]}' 
         )
         
-        # --- Creación de Evento con archivos mock ---
+        # --- PASO 3: Creación de Evento y otros datos ---
         mock_image = SimpleUploadedFile("mock_image.png", b"file_content", content_type="image/png")
         mock_programacion_content = b"Contenido de la programacion detallada..."
         self.mock_programacion = SimpleUploadedFile("programacion.pdf", mock_programacion_content, content_type="application/pdf")
 
         self.evento = Evento.objects.create(
-            eve_nombre='Conferencia de Testing',
+            eve_nombre=f'Conferencia de Testing {unique_id}',
             eve_descripcion='Detalles de la conferencia',
             eve_ciudad='Manizales',
             eve_lugar='Teatro',
@@ -96,7 +133,7 @@ class AsistenteProgramacionTestCase(TestCase):
             preinscripcion_habilitada_asistentes=True
         )
 
-        # --- Inscripción del Asistente ---
+        # Inscripción del Asistente
         mock_soporte = SimpleUploadedFile("soporte.pdf", b"soporte_content", content_type="application/pdf")
         AsistenteEvento.objects.create(
             asi_eve_asistente_fk=self.asistente_inscrito,
@@ -105,94 +142,51 @@ class AsistenteProgramacionTestCase(TestCase):
             asi_eve_estado='Aprobado', 
             asi_eve_soporte=mock_soporte,
             asi_eve_qr=mock_image,
-            asi_eve_clave='CLAVE123'
+            asi_eve_clave=f'CLAVE{unique_id[-4:]}'
         )
 
+        # Definición de URLs
         self.detail_url = reverse('ver_info_evento_asi', kwargs={'pk': self.evento.pk})
-        self.dashboard_url = reverse('dashboard_asistente')
-
-    # --- MÉTODO PARA LIMPIEZA FORZADA DE AUTO_INCREMENT (SOLUCIÓN AL PROBLEMA DE MySQL) ---
-    def tearDown(self):
-        """ 
-        Ejecuta comandos SQL crudos para resetear los contadores de ID.
-        Esto es un hack necesario cuando MySQL no limpia AUTO_INCREMENT durante ROLLBACK.
-        """
-        table_names = [
-            'app_usuarios_usuario', 
-            'app_usuarios_administradorevento',
-            'app_usuarios_asistente',
-            'app_admin_eventos_evento',
-            'app_asistentes_asistenteevento'
-        ]
+        self.dashboard_url = reverse('dashboard_asistente') 
         
-        with connection.cursor() as cursor:
-            for table_name in table_names:
-                # La sintaxis de MySQL/MariaDB para resetear AUTO_INCREMENT.
-                # Establece el próximo ID disponible en 1.
-                cursor.execute(f"ALTER TABLE {table_name} AUTO_INCREMENT = 1;")
-    
-    # --- Métodos de Ayuda ---
+    # --- Métodos de Ayuda (sin cambios) ---
     def _login_as_asistente(self, asistente_user, asistente_obj):
-        """ Método de ayuda para simular el inicio de sesión del Asistente. """
         client = Client()
-        client.login(username=asistente_user.username, password='password123')
+        client.login(username=asistente_user.username, password='password123') 
         session = client.session
         session['asistente_id'] = asistente_obj.pk
         session.save()
         return client
 
     # ----------------------------------------------------------------------
-    # CP-HU1-001: Acceso Asistente Inscrito (Condición de Éxito)
+    # Casos de Prueba (sin cambios)
     # ----------------------------------------------------------------------
     def test_cp_hu1_001_acceso_asistente_inscrito(self):
-        """ Verifica que un Asistente inscrito acceda al detalle del Evento (HTTP 200) y vea la programación. """
         client = self._login_as_asistente(self.asistente_inscrito_user, self.asistente_inscrito) 
-        
         response = client.get(self.detail_url)
-        
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'info_evento_evento_asi.html')
         self.assertContains(response, self.evento.eve_programacion.url)
 
-    # ----------------------------------------------------------------------
-    # CP-HU1-002: Restricción Asistente No Inscrito (Condición de Falla)
-    # ----------------------------------------------------------------------
     def test_cp_hu1_002_restriccion_acceso_asistente_no_inscrito(self):
-        """ Verifica que un Asistente NO inscrito sea redirigido y reciba un mensaje de error. """
         client = self._login_as_asistente(self.asistente_no_inscrito_user, self.asistente_no_inscrito)
-
         response = client.get(self.detail_url, follow=True) 
-
         self.assertRedirects(response, self.dashboard_url, status_code=302, target_status_code=200)
-        
         messages = list(get_messages(response.wsgi_request))
-        self.assertTrue(any("No tienes permiso para ver este evento." in str(msg) for msg in messages))
+        self.assertTrue(any("No tienes permiso para ver este evento." in str(msg) for msg in messages), 
+                        "El mensaje de error esperado no fue encontrado.")
 
-    # ----------------------------------------------------------------------
-    # CP-HU1-003: Descarga Programación (Verificación del Archivo)
-    # ----------------------------------------------------------------------
     def test_cp_hu1_003_descarga_programacion_exitosa(self):
-        """ Simula la solicitud directa al archivo de programación y verifica su contenido. """
         client = self._login_as_asistente(self.asistente_inscrito_user, self.asistente_inscrito)
-        
         programacion_url = self.evento.eve_programacion.url
-        
         download_response = client.get(programacion_url)
-        
         self.assertEqual(download_response.status_code, 200)
         self.assertEqual(download_response['Content-Type'], 'application/pdf')
         self.assertEqual(download_response.content, b"Contenido de la programacion detallada...")
 
-    # ----------------------------------------------------------------------
-    # CP-HU1-004: Evento Inexistente (Manejo de Error)
-    # ----------------------------------------------------------------------
     def test_cp_hu1_004_acceso_evento_inexistente(self):
-        """ Verifica HTTP 404 para un Evento inexistente (Event.pk no encontrado). """
         client = self._login_as_asistente(self.asistente_inscrito_user, self.asistente_inscrito)
-        
-        non_existent_pk = self.evento.pk + 999
+        non_existent_pk = self.evento.pk + 999 
         non_existent_url = reverse('ver_info_evento_asi', kwargs={'pk': non_existent_pk})
-
         response = client.get(non_existent_url)
-        
         self.assertEqual(response.status_code, 404)

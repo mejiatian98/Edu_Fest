@@ -112,7 +112,7 @@
         {% if es_de_pago %}
             <div class="mb-3">
                 <label for="asi_eve_soporte" class="form-label">Comprobante de pago</label>
-                <input type="file" name="asi_eve_soporte" class="form-control" >
+                <input type="file" name="asi_eve_soporte" class="form-control" accept=".jpg,.jpeg,.png,.gif">
             </div>
             <div class="mb-3">
                 <img id="preview_imagen" src="{{ form.instance.asi_eve_soporte.url }}" alt="Vista previa de la imagen" style="max-width: 300px; margin-top: 10px;">

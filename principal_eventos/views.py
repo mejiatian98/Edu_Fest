@@ -63,8 +63,9 @@ def login_view(request):
 
 
                 # ADMIN
-                if hasattr(user, 'administradorevento'):
-                    request.session['admin_id'] = user.administradorevento.id
+                if hasattr(user, 'administrador_evento'):
+                    request.session['admin_id'] = user.administrador_evento.id
+
                     request.session['admin_nombre'] = user.username
                     if primer_acceso:
                         return redirect('cambio_password_admin')
