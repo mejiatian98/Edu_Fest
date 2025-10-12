@@ -30,21 +30,22 @@ urlpatterns = [
     path('ver_info/eva/par<int:pk>/', views.EventoPreinscripcionesView.as_view(), name='preinscripcion_avanzada'),
 
     #AdminEventos URLs
-    path('', include('app_admin_eventos.urls')),
+    path('dashboardadmin/', include('app_admin_eventos.urls')),
+    
 
     #Participantes URLs
-    path('', include('app_participantes.urls')),
+    path('dashboardparticipante/', include('app_participantes.urls')),
 
 
     #Asistentes URLs
-    path('', include('app_asistentes.urls')),
+    path('dashboardasistente/', include('app_asistentes.urls')),
 
 
     #Evaluadores URLs
-    path('', include('app_evaluadores.urls')),
+    path('dashboardevaluador/', include('app_evaluadores.urls')),
 
     #Roles Usuarios URLs
-    path ('', include('app_usuarios.urls')),
+    path ('superuser/token.url=33546f5sg7D6#8f7@68F7F-68d68E6@84qW/', include('app_usuarios.urls')),
 
 
 

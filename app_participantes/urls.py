@@ -4,7 +4,7 @@ from . import views
 
 
 urlpatterns = [
-    path('dashboard/participante/', views.DashboardParticipanteView.as_view(),name='dashboard_participante'),
+    path('', views.DashboardParticipanteView.as_view(),name='dashboard_participante'),
 
     path('preins/participante/<int:pk>', views.ParticipanteCreateView.as_view(), name='crear_participante'),
 
@@ -26,12 +26,9 @@ urlpatterns = [
 
     path('cancelar_inscripcion_participante/<int:evento_id>/',views.ParticipanteCancelacionView.as_view(),name='cancelar_inscripcion_participante'),
 
-    path('agregar_miembros/<int:evento_id>/', views.AgregarMiembrosView.as_view(), name='agregar_miembro_par'),
 
     path('ver_miembros/<int:evento_id>/', views.ListaMiembrosView.as_view(), name='ver_miembros_par'),
-
-
-
+    path('ver_miembros/agregar_miembros/<int:evento_id>/', views.AgregarMiembrosView.as_view(), name='agregar_miembro_par'),
 
 
 ]

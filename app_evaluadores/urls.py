@@ -4,7 +4,7 @@ from . import views
 
 
 urlpatterns = [
-    path('dashboard/evaluador/', views.DashboardEvaluadorView.as_view(), name='dashboard_evaluador'),
+    path('', views.DashboardEvaluadorView.as_view(), name='dashboard_evaluador'),
     path('Preins/evaluador/<int:evento_id>', views.EvaluadorCreateView.as_view(), name='crear_evaluador'),
     path('ver_detalle_evento_eva/<int:pk>', views.EventoDetailView.as_view(), name='ver_info_evento_eva'),
 

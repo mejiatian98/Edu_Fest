@@ -25,10 +25,12 @@
     
 
     {% block notificar %}
-    <div class="text-start pt-5">
-        <a href="{% url 'dashboard_admin' %}" class="btn btn-secondary m-1">Volver al Inicio</a>
-    </div>
+    
     {% endblock notificar %}
+
+    <button type="button" class="btn btn-secondary mt-5" onclick="window.history.back()">
+        ← Volver atrás
+    </button>
 
     
 </div>

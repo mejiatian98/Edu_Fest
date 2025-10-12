@@ -6,7 +6,7 @@ from . import views
 urlpatterns = [
     path('preins/asistente/<int:pk>', views.AsistenteCreateView.as_view(), name='crear_asistente'),
 
-    path('dashboard/asistente', views.DashboardAsistenteView.as_view(), name='dashboard_asistente'),
+    path('', views.DashboardAsistenteView.as_view(), name='dashboard_asistente'),
 
     path('cambiar_password/asistente/', views.CambioPasswordAsistenteView.as_view(), name='cambio_password_asistente'),
     

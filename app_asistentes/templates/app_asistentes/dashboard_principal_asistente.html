@@ -142,16 +142,7 @@
                                     {% endif %}">
                                     <h2>{{ evento.eve_estado }}</h2>
                                 </div>
-                            
 
-                            
-
-                                {% if evento.eve_estado == 'Cancelado' and evento.eve_cancelacion_iniciada %}
-                                    <div class="text-center mt-2">
-                                        <p class="text-danger fw-bold"><small>Tiempo restante para cancelar definitivamente:</small></p>
-                                        <h4 id="countdown" class="text-danger" data-cancel-time="{{ evento.eve_cancelacion_iniciada|date:'Y-m-d H:i:s' }}"></h4>
-                                    </div>
-                                {% endif %}
                             </div>
                         </div>
                     </div>

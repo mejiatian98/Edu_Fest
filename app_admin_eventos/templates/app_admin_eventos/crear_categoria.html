@@ -31,7 +31,8 @@
 
         
     </form>
-
-    <a href="{% url 'dashboard_admin' %}" class="btn btn-secondary mt-5">Volver al Inicio</a>
+    <button type="button" class="btn btn-secondary mt-5" onclick="window.history.back()">
+        ← Volver atrás
+    </button>
 </div>
 {% endblock %}

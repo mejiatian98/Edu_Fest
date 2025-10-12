@@ -4,7 +4,7 @@ from app_admin_eventos import views
 from app_admin_eventos.views import CertificadosView, cargar_personas
 
 urlpatterns = [
-    path('dashboard/admin/', views.MenuPrincipalView.as_view(), name='dashboard_admin'),
+    path('', views.MenuPrincipalView.as_view(), name='dashboard_admin'),
     path('crear/', views.EventoCreateView.as_view(), name='crear_evento'),
     path('crear_categoria_area/', views.CreateCategoriaView.as_view(), name='crear_categoria_area'),
     path("lista_categorias/", views.ListaCategoriasView.as_view(), name="lista_categorias"),
@@ -20,9 +20,7 @@ urlpatterns = [
     
     path('evento/<int:evento_id>/cancelacion/', views.PageCancelarEventoView.as_view(), name='cancelar_evento_page'),
     path('evento/<int:pk>/cancelar_conteo/', views.CancelarEventoView.as_view(), name='evento_estado_cancelado'),
-    path('evento/<int:pk>/cancelar/', views.EliminarDefiniEvento.as_view(), name='cancelar_evento'),
 
-    path('evento/<int:evento_id>/revertir/', views.RevertirCancelacionEventoView.as_view(), name='normal_evento'),
     path('evento/<int:evento_id>/cambiar_preinscripcion_asistente/', views.CambiarPreinscripcionAsistenteView.as_view(), name='cambiar_preinscripcion_asistente'),
     path('evento/<int:evento_id>/cambiar_preinscripcion_participante/', views.CambiarPreinscripcionParticipanteView.as_view(), name='cambiar_preinscripcion_participante'),
     path('evento/<int:evento_id>/cambiar_preinscripcion_evaluador/', views.CambiarPreinscripcionEvaluadorView.as_view(), name='cambiar_preinscripcion_evaluador'),

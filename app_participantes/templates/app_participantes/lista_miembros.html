@@ -5,9 +5,8 @@
 
 {% block content %}
 <div class="container ">
-    <div class="d-flex justify-content-between align-items-center">
+
         <h2 class="contenedor">Miembros del Proyecto: {{ evento.eve_nombre }}</h2>
-    </div>
 
     <h4 class="text-center text-info">Miembros actuales: {{ miembros_actuales }} / {{ max_miembros }}</h4>
     <hr>
@@ -109,7 +108,7 @@
     </div>
 
     <a href="{% url 'dashboard_participante' %}" class="btn btn-secondary my-5">
-        <i class="fas fa-arrow-left"></i> Volver al Dashboard
+        <i class="fas fa-arrow-left"></i> Volver al Inicio
     </a>
 
 </div>

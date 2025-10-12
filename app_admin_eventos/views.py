@@ -37,7 +37,6 @@ from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.decorators import login_required
 from twilio.rest import Client
-from .utils import enviar_sms
 from app_admin_eventos.models import Evento
 from django.db.models import Sum, Max
 from app_participantes.models import ParticipanteEvento
@@ -442,116 +441,9 @@ class CancelarEventoView(View):
             evento.eve_estado = "Cancelado"
             evento.eve_cancelacion_iniciada = now()  
             evento.save()
-            messages.success(request, "El evento ha sido marcado como cancelado. Tienes 5 horas para revertir esta decisión.")
+            messages.success(request, "El evento ha sido marcado como cancelado. ")
 
         return redirect('cancelar_evento_page', evento_id=evento.id)
-
-
-@method_decorator(admin_required, name='dispatch')
-class EliminarDefiniEvento(DetailView):
-    model = Evento
-    template_name = 'dashboard_principal_admin.html'
-    context_object_name = 'evento'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        evento = context['evento']
-
-        if evento.eve_estado == 'Cancelado' and evento.eve_cancelacion_iniciada:
-            tiempo_transcurrido = timezone.now() - evento.eve_cancelacion_iniciada
-            tiempo_restante = timedelta(hours=5) - tiempo_transcurrido
-            segundos_restantes = max(int(tiempo_restante.total_seconds()), 0)
-            context['segundos_restantes'] = segundos_restantes
-
-            if segundos_restantes == 0:
-                self.enviar_notificaciones_y_eliminar(evento)
-                context['dashboard_admin'] = True  # Indica que se debe redirigir
-
-        else:
-            context['segundos_restantes'] = None
-
-        return context
-
-    def enviar_notificaciones_y_eliminar(self, evento):
-        # Función para enviar correo
-        def enviar_correo(destinatarios, asunto, mensaje):
-            try:
-                send_mail(
-                    asunto,
-                    mensaje,
-                    DEFAULT_FROM_EMAIL,
-                    destinatarios,
-                    fail_silently=False,
-                )
-            except Exception as e:
-                print(f"Error al enviar correo: {e}")
-
-        # Obtener todos los participantes del evento
-        participantes_evento = ParticipanteEvento.objects.filter(par_eve_evento_fk=evento)
-        participantes_correos = [pe.par_eve_participante_fk.par_correo for pe in participantes_evento]
-
-        # Obtener todos los asistentes del evento
-        asistentes_evento = AsistenteEvento.objects.filter(asi_eve_evento_fk=evento)
-        asistentes_correos = [ae.asi_eve_asistente_fk.asi_correo for ae in asistentes_evento]
-
-        # Obtener todos los evaluadores del evento
-        evaluadores_evento = EvaluadorEvento.objects.filter(eva_eve_evento_fk=evento)
-        evaluadores_correos = [ee.eva_eve_evaluador_fk.usuario.eva_correo for ee in evaluadores_evento]
-
-        # Obtener el administrador del evento
-        administrador_correo = [evento.eve_administrador_fk.usuario.correo]
-
-        # Enviar correo electrónico a todos
-        destinatarios = participantes_correos + asistentes_correos + evaluadores_correos + administrador_correo
-        asunto = 'Evento Cancelado'
-        mensaje = f'El evento "{evento.eve_nombre}" ha sido cancelado por motivos administrativos. Por lo tanto, tu inscripción ha sido eliminada de la base de datos por seguridad.'
-        enviar_correo(destinatarios, asunto, mensaje)
-
-        # Esperar 5 segundos antes de eliminar
-        time.sleep(5)
-
-        # Eliminar todas las relaciones y entidades relacionadas
-        self.eliminar_relaciones_y_entidades(evento)
-
-    def eliminar_relaciones_y_entidades(self, evento):
-        try:
-            # Obtener Participantes, Asistentes y Evaluadores únicos vinculados al evento
-            participantes = Participante.objects.filter(participanteevento__par_eve_evento_fk=evento).distinct()
-            asistentes = Asistente.objects.filter(asistenteevento__asi_eve_evento_fk=evento).distinct()
-            evaluadores = Evaluador.objects.filter(evaluadorevento__eva_eve_evento_fk=evento).distinct()
-
-            # Eliminar relaciones primero
-            ParticipanteEvento.objects.filter(par_eve_evento_fk=evento).delete()
-            AsistenteEvento.objects.filter(asi_eve_evento_fk=evento).delete()
-            EvaluadorEvento.objects.filter(eva_eve_evento_fk=evento).delete()
-            EventoCategoria.objects.filter(eve_cat_evento_fk=evento).delete()
-            Calificacion.objects.filter(cal_criterio_fk__cri_evento_fk=evento).delete()
-
-            # Eliminar el evento
-            evento.delete()
-
-            # Luego eliminar entidades base
-            participantes.delete()
-            asistentes.delete()
-            evaluadores.delete()
-
-        except Exception as e:
-            print(f"Error al eliminar entidades relacionadas con el evento: {e}")
-
-@method_decorator(admin_required, name='dispatch')
-class RevertirCancelacionEventoView(View):
-    def post(self, request, evento_id):
-        evento = get_object_or_404(Evento, id=evento_id)
-
-        if evento.eve_estado == "Cancelado":
-            evento.eve_estado = "Publicado"
-            evento.eve_cancelacion_iniciada = None
-            evento.save()
-            messages.success(request, "La cancelación ha sido revertida. El evento vuelve a estar publicado.")
-        else:
-            messages.info(request, "El evento no se encuentra en estado de cancelación.")
-
-        return redirect('dashboard_admin')
 
 
 

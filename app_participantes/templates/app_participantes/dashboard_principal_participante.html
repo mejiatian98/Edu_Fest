@@ -138,16 +138,6 @@
                                     {% endif %}">
                                     <h2>{{ evento.eve_estado }}</h2>
                                 </div>
-                            
-
-                            
-
-                                {% if evento.eve_estado == 'Cancelado' and evento.eve_cancelacion_iniciada %}
-                                    <div class="text-center mt-2">
-                                        <p class="text-danger fw-bold"><small>Tiempo restante para cancelar definitivamente:</small></p>
-                                        <h4 id="countdown" class="text-danger" data-cancel-time="{{ evento.eve_cancelacion_iniciada|date:'Y-m-d H:i:s' }}"></h4>
-                                    </div>
-                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -160,16 +150,16 @@
                         </div>
 
                         <div class="col-md-12 mb-3">
-    {% with es_grupo=es_miembro_de_proyecto_grupal|dict_get:evento.id %}
+                            {% with es_grupo=es_miembro_de_proyecto_grupal|dict_get:evento.id %}
 
-        {% if es_grupo %}
-            <a href="{% url 'ver_miembros_par' evento.id %}" class="btn btn-info w-100">
-                <i class="bi bi-person-lines-fill"></i> Ver Lista de Miembros 
-            </a>
-        {% endif %}
+                                {% if es_grupo %}
+                                    <a href="{% url 'ver_miembros_par' evento.id %}" class="btn btn-info w-100">
+                                        <i class="bi bi-person-lines-fill"></i> Ver Lista de Miembros 
+                                    </a>
+                                {% endif %}
 
-    {% endwith %}
-</div>
+                            {% endwith %}
+                        </div>
                     </div>
 
                     <hr>
