@@ -496,7 +496,8 @@ class DashboardParticipanteView(View):
             return redirect('login_view')
 
         try:
-            participante = Participante.objects.get(id=participante_id)
+            # Seleccionamos el usuario para posibles validaciones futuras
+            participante = Participante.objects.select_related('usuario').get(id=participante_id)
         except Participante.DoesNotExist:
             messages.error(request, "Participante no encontrado.")
             return redirect('login_view')
@@ -514,14 +515,11 @@ class DashboardParticipanteView(View):
             rel.par_eve_evento_fk for rel in relaciones if rel.par_eve_estado == 'Pendiente'
         ]
 
-        # Re-obtener los objetos Evento (opcional, pero asegura que 'eventos' sea QuerySet si se necesita)
-        # Aquí mantendré la lista eventos_aprobados tal como la construiste.
-        
         # Diccionarios de datos
         criterios_completos = {}
         calificaciones_registradas = {}
-        # 🔥 NUEVA VARIABLE DE CONTROL DE GRUPO
-        es_miembro_de_grupo = {} 
+        # 🔥 NUEVA VARIABLE: Indica si el proyecto es grupal (> 1 persona)
+        es_miembro_de_proyecto_grupal = {} 
 
         for evento in eventos_aprobados:
             rel = ParticipanteEvento.objects.filter(
@@ -530,46 +528,38 @@ class DashboardParticipanteView(View):
             ).first()
 
             if rel:
-                # Lógica para determinar si pertenece a un grupo (es líder de un grupo O es miembro)
                 # ---------------------------------------------------------------------------------
+                # LÓGICA CLAVE: Se muestra el botón si el proyecto tiene 2 o más integrantes
                 
-                # Caso 1: Es miembro de un grupo (apunta a otro registro como principal)
-                es_miembro = rel.par_eve_proyecto_principal is not None
-                
-                # Caso 2: Es líder, pero el proyecto tiene al menos 2 miembros (él mismo + 1)
-                es_lider_con_miembros = False
-                if rel.par_eve_proyecto_principal is None:
-                    # Contamos los que apuntan a él como principal.
-                    conteo_miembros = ParticipanteEvento.objects.filter(
+                if rel.par_eve_proyecto_principal is not None:
+                    # Caso 1: Es un MIEMBRO (par_eve_proyecto_principal NO es NULL) -> Es GRUPO.
+                    es_miembro_de_proyecto_grupal[evento.id] = True
+                    
+                else:
+                    # Caso 2: Es el LÍDER (par_eve_proyecto_principal es NULL).
+                    # Verificamos si tiene al menos UN miembro que apunte a él como principal.
+                    
+                    conteo_miembros_asociados = ParticipanteEvento.objects.filter(
                         par_eve_proyecto_principal=rel
                     ).count()
-                    # Si el conteo es > 0, significa que él es líder de un grupo.
-                    if conteo_miembros > 0:
-                        es_lider_con_miembros = True
-                        
-                # El botón debe mostrarse si es miembro O si es líder de un grupo (tiene al menos un miembro).
-                es_miembro_de_grupo[evento.id] = es_miembro or es_lider_con_miembros
-
+                    
+                    # Si el líder tiene miembros asociados (> 0), es un proyecto grupal.
+                    es_miembro_de_proyecto_grupal[evento.id] = (conteo_miembros_asociados > 0)
+                
                 # ---------------------------------------------------------------------------------
                 
-                # Lógica de Criterios (mantenida)
-                suma = Criterio.objects.filter(cri_evento_fk=evento).aggregate(
-                    total=Sum('cri_peso')
-                )['total'] or 0
+                # Lógica de Criterios y Calificaciones (se mantiene)
+                suma = Criterio.objects.filter(cri_evento_fk=evento).aggregate(total=Sum('cri_peso'))['total'] or 0
                 criterios_completos[evento.id] = (suma == 100)
-
-                # Lógica de Calificaciones (mantenida)
                 calificaciones_registradas[evento.id] = rel.calificacion is not None
             else:
-                es_miembro_de_grupo[evento.id] = False
+                es_miembro_de_proyecto_grupal[evento.id] = False
                 criterios_completos[evento.id] = False
                 calificaciones_registradas[evento.id] = False
 
 
-        # Obtener una relación para usar en la vista (ej. link de perfil)
-        relacion = ParticipanteEvento.objects.filter(
-            par_eve_participante_fk=participante
-        ).first()
+        # Obtener una relación para usar en la vista (si es necesario)
+        relacion = relaciones.first() 
 
         context = {
             'participante': participante,
@@ -578,11 +568,12 @@ class DashboardParticipanteView(View):
             'relacion': relacion,
             'criterios_completos': criterios_completos,
             'calificaciones_registradas': calificaciones_registradas,
-            # 🔥 NUEVA VARIABLE A UTILIZAR EN EL TEMPLATE
-            'es_miembro_de_grupo': es_miembro_de_grupo, 
+            # 🔥 VARIABLE DE CONTROL DE GRUPO ENVIADA AL CONTEXTO
+            'es_miembro_de_proyecto_grupal': es_miembro_de_proyecto_grupal, 
         }
 
         return render(request, self.template_name, context)
+
 
 ##################### --- Cambio de Contraseña Participante --- #####################
 

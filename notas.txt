@@ -1,2 +1,0 @@
-Debo corregir el view de Participante create para validar los campos 
-en participante evento al crear un participante con grupo y mirar si se cumplen los campos en esta tabla

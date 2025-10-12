@@ -306,8 +306,9 @@ class EventoCreateView(CreateView):
             subject=f'Nuevo evento creado: {evento.eve_nombre}',
             message=f'El Administrador "{administrador.usuario.first_name} {administrador.usuario.last_name}" '
                     f'ha creado el evento "{evento.eve_nombre}".',
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=['halosniper1963@gmail.com'],  # o settings.SUPERADMIN_EMAIL si lo defines en .env
+            from_email=DEFAULT_FROM_EMAIL,
+            recipient_list=[administrador.usuario.email],
+            fail_silently=False # o settings.SUPERADMIN_EMAIL si lo defines en .env
         )
 
         # ✅ Mensaje de éxito
@@ -731,7 +732,7 @@ class AprobarParticipanteView(View):
             for info in miembros_aprobados:
                 rol_texto = "líder" if info['es_lider'] else "miembro"
                 
-                subject = f"Aprobación de grupo para el evento: {evento.eve_nombre}"
+                subject = f"✅ Aprobación de grupo para el evento: {evento.eve_nombre}"
                 body = (
                     f"Hola {info['participante'].usuario.first_name},\n\n"
                     f"¡Excelentes noticias! Tu grupo ha sido aprobado para participar en el evento: '{evento.eve_nombre}'.\n\n"
@@ -791,7 +792,7 @@ class AprobarParticipanteView(View):
             participante_evento.save()
 
             # Enviar correo con QR adjunto
-            subject = f"Aprobación para el evento: {evento.eve_nombre}"
+            subject = f"✅ Aprobación para el evento: {evento.eve_nombre}"
             body = (
                 f"Hola {participante.usuario.first_name},\n\n"
                 f"Has sido aprobado para participar en el evento: '{evento.eve_nombre}'.\n"
@@ -1439,7 +1440,7 @@ class AprobarEvaluadorView(View):
         evaluador_evento.save()
 
         # Enviar correo
-        subject = f"Aprobación como Evaluador en el evento: {evento.eve_nombre}"
+        subject = f"✅ Aprobación como Evaluador en el evento: {evento.eve_nombre}"
         body = (
             f"Hola {evaluador.usuario.first_name},\n\n"
             f"Has sido aprobado como evaluador en el evento: '{evento.eve_nombre}'.\n"

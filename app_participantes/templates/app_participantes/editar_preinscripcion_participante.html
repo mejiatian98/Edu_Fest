@@ -38,11 +38,11 @@
                     <strong>Evento:</strong> {{ r.par_eve_evento_fk.eve_nombre }}<br>
                     <strong>Estado:</strong> 
                     {% if r.par_eve_estado == "Aprobado" %}
-                        <span class="badge bg-success">Aprobado ✅</span>
+                        <span class="badge bg-success m-4 p-2">Aprobado ✅</span>
                     {% elif r.par_eve_estado == "Pendiente" %}
                         <span class="badge bg-warning text-dark m-4 p-2">Pendiente</span>
                     {% else %}
-                        <span class="badge bg-danger">Rechazado ❌</span>
+                        <span class="badge bg-danger m-4 p-2">Rechazado ❌</span>
                     {% endif %}
                 </p>
 
