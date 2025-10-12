@@ -159,34 +159,19 @@
                             <a href="{% url 'ingreso_evento_par' evento.id %}" class="btn btn-success w-100"><i class="bi bi-universal-access-circle"></i> Acceso </a>
                         </div>
 
-                        <div class="col">
-                            <div class="row row-cols-1 row-cols-sm-2 g-2">
-                                <div class="col-md-6 mb-3">
-                                    {% with lider=es_lider_proyecto|dict_get:evento.id count=miembros_proyecto_count|dict_get:evento.id %}
-                                        
-                                        {% if lider %}
-                                            {% if count < 5 %}
-                                                <a href="{% url 'agregar_miembro_par' evento.id %}" class="btn btn-info w-100">
-                                                    <i class="bi bi-plus-circle"></i> Agregar miembros ({{ count }}/5)
-                                                </a>
-                                            {% else %}
-                                                <button class="btn btn-secondary w-100" disabled>
-                                                    <i class="bi bi-people-fill"></i> Máximo de miembros alcanzado ({{ count }}/5)
-                                                </button>
-                                            {% endif %}
-                                        {% else %}
-                                            <button class="btn btn-secondary w-100" disabled>
-                                                <i class="bi bi-plus-circle"></i> Agregar miembros (Solo Líder)
-                                            </button>
-                                        {% endif %}
-                                        
-                                    {% endwith %}
+
+                        {% with en_grupo=es_miembro_de_grupo.evento.id %}
+                            
+                            {% if en_grupo %}
+                                <div class="col-md-12 mb-3">
+                                    <a href="{% url 'ver_miembros_par' evento.id %}" class="btn btn-info w-100">
+                                        <i class="bi bi-person-lines-fill"></i> Ver Lista de Miembros 
+                                    </a>
                                 </div>
-                                <div class="col-md-6 mb-3">
-                                    <a href="{% url 'ver_miembros_par' evento.id %}" class="btn btn-info w-100"><i class="bi bi-person-lines-fill"></i> Ver Lista de Miembros </a>
-                                </div>
-                            </div>
-                        </div>
+                            {% endif %}
+
+                        {% endwith %}
+
                     </div>
 
                     <hr>

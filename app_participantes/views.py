@@ -334,7 +334,7 @@ class ParticipanteCreateView(View):
                             mensaje_lider += f"Grupo asignado: {grupo_django.name}\n"
 
                         mensaje_lider += f"Puedes ingresar con tu correo: {usuario.email}\n" \
-                                         f"Tu contraseña es: {contrasena_generada if contrasena_generada else 'la que ya tenías'}. "
+                                         f"Tu contraseña es: {contrasena_generada if contrasena_generada else 'la que ya tenías'} "
 
                         send_mail(
                             subject=f"🎟️ Registro exitoso - Evento \"{evento.eve_nombre}\" - Líder/Participante",
@@ -355,7 +355,7 @@ class ParticipanteCreateView(View):
                                                   f"Grupo asignado: {grupo_django.name}\n" \
                                                   f"Líder: {usuario.first_name} {usuario.last_name}\n" \
                                                   f"Puedes ingresar con tu correo: {miembro['email']}\n" \
-                                                  f"Tu contraseña es: {miembro['password'] if miembro['password'] else 'la que ya tenías'}. "
+                                                  f"Tu contraseña es: {miembro['password'] if miembro['password'] else 'la que ya tenías'} "
                                 
                                 send_mail(
                                     subject=f"🎟️ Registro exitoso - Evento \"{evento.eve_nombre}\" - Miembro del grupo",
@@ -484,6 +484,7 @@ class EventoDetailView(DetailView):
 
 
 ######## DASHBOARD PARTICIPANTE ########
+
 @method_decorator(participante_required, name='dispatch')
 class DashboardParticipanteView(View):
     template_name = 'dashboard_principal_participante.html'
@@ -500,98 +501,88 @@ class DashboardParticipanteView(View):
             messages.error(request, "Participante no encontrado.")
             return redirect('login_view')
 
-        # Relación participante-evento: obtenemos todas las inscripciones del participante
+        # Relación participante-evento
         relaciones = ParticipanteEvento.objects.filter(
             par_eve_participante_fk=participante
         ).select_related('par_eve_evento_fk')
 
         # Separar eventos aprobados y pendientes
-        eventos_aprobados = [rel.par_eve_evento_fk for rel in relaciones if rel.par_eve_estado == 'Aprobado']
-        eventos_pendientes = [rel.par_eve_evento_fk for rel in relaciones if rel.par_eve_estado == 'Pendiente']
+        eventos_aprobados = [
+            rel.par_eve_evento_fk for rel in relaciones if rel.par_eve_estado == 'Aprobado'
+        ]
+        eventos_pendientes = [
+            rel.par_eve_evento_fk for rel in relaciones if rel.par_eve_estado == 'Pendiente'
+        ]
 
-        # Obtener el primer registro de relación para el link "Editar Perfil" en el header
-        relacion_perfil = relaciones.first()
+        # Re-obtener los objetos Evento (opcional, pero asegura que 'eventos' sea QuerySet si se necesita)
+        # Aquí mantendré la lista eventos_aprobados tal como la construiste.
         
-        # Diccionarios para almacenar datos por evento
+        # Diccionarios de datos
         criterios_completos = {}
         calificaciones_registradas = {}
-        
-        # ✅ NUEVAS ESTRUCTURAS DE DATOS PARA LIDERAZGO Y CONTEO DE MIEMBROS
-        es_lider_proyecto = {}
-        miembros_proyecto_count = {}
-        relacion_actual_por_evento = {}
-
+        # 🔥 NUEVA VARIABLE DE CONTROL DE GRUPO
+        es_miembro_de_grupo = {} 
 
         for evento in eventos_aprobados:
-            # Encontrar la relación específica para el participante actual en este evento
-            rel_actual = ParticipanteEvento.objects.filter(
+            rel = ParticipanteEvento.objects.filter(
                 par_eve_evento_fk=evento,
                 par_eve_participante_fk=participante
             ).first()
-            
-            if rel_actual:
-                relacion_actual_por_evento[evento.id] = rel_actual
-                
-                # Lógica de Liderazgo
-                # El usuario es líder si su propio registro NO apunta a otro como principal (es decir, el campo es NULL)
-                # O si su registro es el principal (código de proyecto) y el evento permite grupos.
-                # Asumiremos que es líder si par_eve_proyecto_principal es NULL.
-                lider = rel_actual.par_eve_proyecto_principal is None 
-                es_lider_proyecto[evento.id] = lider
 
-                # Lógica de Conteo de Miembros
-                if lider:
-                    # Si es líder, contamos su propio registro (par_eve_proyecto_principal=NULL) 
-                    # más todos los registros que apuntan a él.
-                    conteo = ParticipanteEvento.objects.filter(
-                        par_eve_evento_fk=evento,
-                        par_eve_proyecto_principal=rel_actual # Registros que apuntan al líder
-                    ).count() + 1 # +1 para incluir al líder mismo (donde es NULL)
-                    
-                    miembros_proyecto_count[evento.id] = conteo
-                else:
-                    # Si no es líder, el conteo se basa en el registro principal al que apunta
-                    if rel_actual.par_eve_proyecto_principal:
-                        lider_rel = rel_actual.par_eve_proyecto_principal
-                        conteo = ParticipanteEvento.objects.filter(
-                            par_eve_evento_fk=evento,
-                            par_eve_proyecto_principal=lider_rel 
-                        ).count() + 1 # +1 para incluir al líder
-                        miembros_proyecto_count[evento.id] = conteo
-                    else:
-                        miembros_proyecto_count[evento.id] = 1 # Caso de proyecto individual sin apuntador principal
+            if rel:
+                # Lógica para determinar si pertenece a un grupo (es líder de un grupo O es miembro)
+                # ---------------------------------------------------------------------------------
                 
-                # Lógica de Criterios (mantener la original)
-                suma = Criterio.objects.filter(cri_evento_fk=evento).aggregate(total=Sum('cri_peso'))['total'] or 0
+                # Caso 1: Es miembro de un grupo (apunta a otro registro como principal)
+                es_miembro = rel.par_eve_proyecto_principal is not None
+                
+                # Caso 2: Es líder, pero el proyecto tiene al menos 2 miembros (él mismo + 1)
+                es_lider_con_miembros = False
+                if rel.par_eve_proyecto_principal is None:
+                    # Contamos los que apuntan a él como principal.
+                    conteo_miembros = ParticipanteEvento.objects.filter(
+                        par_eve_proyecto_principal=rel
+                    ).count()
+                    # Si el conteo es > 0, significa que él es líder de un grupo.
+                    if conteo_miembros > 0:
+                        es_lider_con_miembros = True
+                        
+                # El botón debe mostrarse si es miembro O si es líder de un grupo (tiene al menos un miembro).
+                es_miembro_de_grupo[evento.id] = es_miembro or es_lider_con_miembros
+
+                # ---------------------------------------------------------------------------------
+                
+                # Lógica de Criterios (mantenida)
+                suma = Criterio.objects.filter(cri_evento_fk=evento).aggregate(
+                    total=Sum('cri_peso')
+                )['total'] or 0
                 criterios_completos[evento.id] = (suma == 100)
 
-                # Lógica de Calificaciones (mantener la original)
-                calificaciones_registradas[evento.id] = rel_actual.calificacion is not None
-            
+                # Lógica de Calificaciones (mantenida)
+                calificaciones_registradas[evento.id] = rel.calificacion is not None
             else:
-                # Caso de seguridad: si no hay relación (aunque debería haberla al estar en eventos_aprobados)
-                es_lider_proyecto[evento.id] = False
-                miembros_proyecto_count[evento.id] = 1 # Asumimos 1 si no hay relación clara
+                es_miembro_de_grupo[evento.id] = False
                 criterios_completos[evento.id] = False
                 calificaciones_registradas[evento.id] = False
 
+
+        # Obtener una relación para usar en la vista (ej. link de perfil)
+        relacion = ParticipanteEvento.objects.filter(
+            par_eve_participante_fk=participante
+        ).first()
 
         context = {
             'participante': participante,
             'eventos': eventos_aprobados,
             'eventos_pendientes': eventos_pendientes,
-            'relacion': relacion_perfil, # Usamos la primera relación para el link del perfil
+            'relacion': relacion,
             'criterios_completos': criterios_completos,
             'calificaciones_registradas': calificaciones_registradas,
-            # NUEVAS VARIABLES
-            'es_lider_proyecto': es_lider_proyecto,
-            'miembros_proyecto_count': miembros_proyecto_count,
-            'relacion_actual_por_evento': relacion_actual_por_evento, # Puede ser útil para otros datos
+            # 🔥 NUEVA VARIABLE A UTILIZAR EN EL TEMPLATE
+            'es_miembro_de_grupo': es_miembro_de_grupo, 
         }
 
         return render(request, self.template_name, context)
-
-
 
 ##################### --- Cambio de Contraseña Participante --- #####################
 
@@ -1158,7 +1149,7 @@ class ListaMiembrosView(View):
             es_lider = False
             relacion_lider = relacion_participante.par_eve_proyecto_principal
         else:
-            return None, None, None, None, "Error en la estructura del grupo de participación."
+            return None, None, None, None, "Si quieres crear un grupo, te recomendamos preinscribirte nuevamente con un grupo a este evento."
 
         miembros_del_grupo = ParticipanteEvento.objects.filter(
             Q(par_eve_evento_fk=evento) &

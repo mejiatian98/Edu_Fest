@@ -7,11 +7,6 @@
 <div class="container ">
     <div class="d-flex justify-content-between align-items-center">
         <h2 class="contenedor">Miembros del Proyecto: {{ evento.eve_nombre }}</h2>
-        {% if es_lider %}
-            <a href="{% url 'agregar_miembro_par' evento_id=evento.id %}" class="btn btn-success">
-                <i class="fas fa-user-plus"></i> Agregar Nuevo Miembro
-            </a>
-        {% endif %}
     </div>
 
     <h4 class="text-center text-info">Miembros actuales: {{ miembros_actuales }} / {{ max_miembros }}</h4>
@@ -84,6 +79,33 @@
                 </tbody>
             </table>
         </div>
+    </div>
+    <div class="col-md-6 my-5 text-center mx-auto">
+        {# Usamos las variables simples que ya están en el contexto de ListaMiembrosView #}
+            
+        {# 1. Validar si es el Líder (es_lider) #}
+        {% if es_lider %}
+            
+            {# 2. Validar si el grupo está lleno (miembros_actuales vs max_miembros) #}
+            {% if miembros_actuales < max_miembros %}
+                {# Si es líder y hay espacio, el botón está activo #}
+                <a href="{% url 'agregar_miembro_par' evento.id %}" class="btn btn-info">
+                    <i class="bi bi-plus-circle"></i> Agregar miembros ({{ miembros_actuales }}/{{ max_miembros }})
+                </a>
+            {% else %}
+                {# Si es líder pero el grupo está lleno, el botón está deshabilitado #}
+                <button class="btn btn-secondary" disabled>
+                    <i class="bi bi-people-fill"></i> Máximo de miembros alcanzado ({{ miembros_actuales }}/{{ max_miembros }})
+                </button>
+            {% endif %}
+            
+        {% else %}
+            {# Si NO es líder, el botón está deshabilitado #}
+            <button class="btn btn-secondary" disabled>
+                <i class="bi bi-plus-circle"></i> Agregar miembros (Solo Líder)
+            </button>
+        {% endif %}
+            
     </div>
 
     <a href="{% url 'dashboard_participante' %}" class="btn btn-secondary my-5">
