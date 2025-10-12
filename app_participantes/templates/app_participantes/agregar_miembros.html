@@ -1,0 +1,82 @@
+{% extends 'dashboard_principal_participante.html' %}
+{% load static %}
+
+{% block title %}Agregar Miembros{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <h2 class="contenedor">Agregar Miembros al Evento: {{ evento.eve_nombre }}</h2>
+    <h4 class="text-center text-info">Miembros actuales: {{ miembros_actuales }} / {{ max_miembros }}</h4>
+    <hr>
+    
+    <form method="POST" enctype="multipart/form-data" novalidate id="formParticipante">
+        {% csrf_token %}
+        <div class="row-12">
+            <h5 class="mb-3">Datos del Exponente</h5>
+            <div class="col mb-3">
+                <label for="id" class="form-label">Cédula</label>
+                {{ form.cedula}}
+                {% if form.cedula.errors %}
+                    <div class="text-danger">
+                        {{ form.cedula.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="col mb-3">
+                <label for="username" class="form-label">Nombre de usuario</label>
+                {{ form.username }}
+                {% if form.username.errors %}
+                    <div class="text-danger">
+                        {{ form.username.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="col mb-3">
+                <label for="first_name" class="form-label">Nombre</label>
+                {{ form.first_name }}
+                {% if form.first_name.errors %}
+                    <div class="text-danger">
+                        {{ form.first_name.errors }}
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="col mb-3">
+                <label for="last_name" class="form-label">Apellido</label>
+                {{ form.last_name }}
+                {% if form.last_name.errors %}
+                    <div class="text-danger">
+                        {{ form.last_name.errors }}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="col mb-3">
+                <label for="email" class="form-label">Correo electrónico</label>
+                {{ form.email }}
+                {% if form.email.errors %}
+                    <div class="text-danger">
+                        {{ form.email.errors }}
+                    </div>
+                {% endif %}
+            </div>
+            <div class="col mb-3">
+                <label for="telefono" class="form-label">Teléfono</label>
+                {{ form.telefono }}
+                {% if form.telefono.errors %}
+                    <div class="text-danger">
+                        {{ form.telefono.errors }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+
+        <div class="mt-5 text-center">
+            <button type="submit" class="btn btn-primary">Agregar Miembro</button>
+        </div>
+    </form>
+
+</div>
+{% endblock %}

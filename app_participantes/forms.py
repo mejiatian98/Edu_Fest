@@ -136,3 +136,50 @@ class EditarUsuarioParticipanteForm(forms.ModelForm):
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
             'telefono': forms.TextInput(attrs={'class': 'form-control'}),
         }
+
+
+
+# app_eventos/forms.py o donde estén tus formularios
+
+class MiembroParticipanteForm(forms.Form): # Usar forms.Form o forms.ModelForm del Usuario
+    # NO heredamos de ModelForm de Participante, solo definimos los campos
+    # Necesarios para el Usuario.
+
+    # Usar get_user_model() si Usuario es el modelo de usuario custom de Django
+    # Si Usuario es un modelo que extiende, sigue con UserModel
+    # Usaremos forms.Form para mayor simplicidad en un formulario que solo crea un objeto.
+    
+    cedula = forms.CharField(
+        label="Cédula", max_length=20,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingresa tu número de cédula', 'required': True})
+    )
+
+    username = forms.CharField(
+        label="Nombre de usuario",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Nombre de usuario', 'required': True})
+    )
+
+    email = forms.EmailField(
+        label="Correo electrónico",
+        widget=forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'tu@email.com', 'required': True})
+    )
+
+    telefono = forms.CharField(
+        label="Teléfono", max_length=15,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono', 'required': True})
+    )
+
+    first_name = forms.CharField(
+        label="Nombre",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu nombre', 'required': True})
+    )
+
+    last_name = forms.CharField(
+        label="Apellido",
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Tu apellido', 'required': True})
+    )
+    
+    # Aquí puedes añadir un clean_ para la validación de si el usuario
+    # ya está en el evento, o dejar esa lógica en la vista, como ya lo tienes.
+    
+    # NOTA: En este nuevo Form, ¡DEBES ELIMINAR TODA REFERENCIA A par_eve_documentos!

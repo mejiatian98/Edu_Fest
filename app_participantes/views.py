@@ -1,12 +1,17 @@
+from io import BytesIO
 from django.utils import timezone
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views import View
 from django.urls import reverse
+import qrcode
+from django.db.models import Q
+
+from app_participantes.utils import send_mail_participante_grupo
 from .models import ParticipanteEvento
 from app_usuarios.models import Evaluador, Participante, Usuario
 from app_admin_eventos.models import Evento, Criterio
-from .forms import EditarUsuarioParticipanteForm, ParticipanteForm
+from .forms import EditarUsuarioParticipanteForm, ParticipanteForm, MiembroParticipanteForm
 from django.contrib import messages
 from principal_eventos.settings import DEFAULT_FROM_EMAIL
 from django.core.mail import send_mail
@@ -27,6 +32,8 @@ from django.contrib.auth import logout
 from app_asistentes.models import AsistenteEvento
 from app_evaluadores.models import EvaluadorEvento
 from django.contrib.auth.hashers import make_password 
+from django.utils.crypto import get_random_string
+from django.core.files.base import ContentFile
 
 
 def crear_o_obtener_grupo_proyecto(codigo_proyecto, evento_nombre):
@@ -493,41 +500,93 @@ class DashboardParticipanteView(View):
             messages.error(request, "Participante no encontrado.")
             return redirect('login_view')
 
-        # Relación participante-evento
-        relaciones = ParticipanteEvento.objects.filter(par_eve_participante_fk=participante).select_related('par_eve_evento_fk')
+        # Relación participante-evento: obtenemos todas las inscripciones del participante
+        relaciones = ParticipanteEvento.objects.filter(
+            par_eve_participante_fk=participante
+        ).select_related('par_eve_evento_fk')
 
         # Separar eventos aprobados y pendientes
         eventos_aprobados = [rel.par_eve_evento_fk for rel in relaciones if rel.par_eve_estado == 'Aprobado']
         eventos_pendientes = [rel.par_eve_evento_fk for rel in relaciones if rel.par_eve_estado == 'Pendiente']
 
-        eventos = Evento.objects.filter(id__in=[e.id for e in eventos_aprobados])
-
-        # ✅ Criterios completos: suma de cri_peso == 100
+        # Obtener el primer registro de relación para el link "Editar Perfil" en el header
+        relacion_perfil = relaciones.first()
+        
+        # Diccionarios para almacenar datos por evento
         criterios_completos = {}
-        for evento in eventos:
-            suma = Criterio.objects.filter(cri_evento_fk=evento).aggregate(total=Sum('cri_peso'))['total'] or 0
-            criterios_completos[evento.id] = (suma == 100)
-
-        # Obtener una relación para usar en la vista (si es necesario)
-        relacion = ParticipanteEvento.objects.filter(par_eve_participante_fk=participante).first()
-
-        # Después de criterios_completos
         calificaciones_registradas = {}
-        for evento in eventos:
-            rel = ParticipanteEvento.objects.filter(
+        
+        # ✅ NUEVAS ESTRUCTURAS DE DATOS PARA LIDERAZGO Y CONTEO DE MIEMBROS
+        es_lider_proyecto = {}
+        miembros_proyecto_count = {}
+        relacion_actual_por_evento = {}
+
+
+        for evento in eventos_aprobados:
+            # Encontrar la relación específica para el participante actual en este evento
+            rel_actual = ParticipanteEvento.objects.filter(
                 par_eve_evento_fk=evento,
                 par_eve_participante_fk=participante
             ).first()
-            calificaciones_registradas[evento.id] = rel.calificacion is not None if rel else False
+            
+            if rel_actual:
+                relacion_actual_por_evento[evento.id] = rel_actual
+                
+                # Lógica de Liderazgo
+                # El usuario es líder si su propio registro NO apunta a otro como principal (es decir, el campo es NULL)
+                # O si su registro es el principal (código de proyecto) y el evento permite grupos.
+                # Asumiremos que es líder si par_eve_proyecto_principal es NULL.
+                lider = rel_actual.par_eve_proyecto_principal is None 
+                es_lider_proyecto[evento.id] = lider
+
+                # Lógica de Conteo de Miembros
+                if lider:
+                    # Si es líder, contamos su propio registro (par_eve_proyecto_principal=NULL) 
+                    # más todos los registros que apuntan a él.
+                    conteo = ParticipanteEvento.objects.filter(
+                        par_eve_evento_fk=evento,
+                        par_eve_proyecto_principal=rel_actual # Registros que apuntan al líder
+                    ).count() + 1 # +1 para incluir al líder mismo (donde es NULL)
+                    
+                    miembros_proyecto_count[evento.id] = conteo
+                else:
+                    # Si no es líder, el conteo se basa en el registro principal al que apunta
+                    if rel_actual.par_eve_proyecto_principal:
+                        lider_rel = rel_actual.par_eve_proyecto_principal
+                        conteo = ParticipanteEvento.objects.filter(
+                            par_eve_evento_fk=evento,
+                            par_eve_proyecto_principal=lider_rel 
+                        ).count() + 1 # +1 para incluir al líder
+                        miembros_proyecto_count[evento.id] = conteo
+                    else:
+                        miembros_proyecto_count[evento.id] = 1 # Caso de proyecto individual sin apuntador principal
+                
+                # Lógica de Criterios (mantener la original)
+                suma = Criterio.objects.filter(cri_evento_fk=evento).aggregate(total=Sum('cri_peso'))['total'] or 0
+                criterios_completos[evento.id] = (suma == 100)
+
+                # Lógica de Calificaciones (mantener la original)
+                calificaciones_registradas[evento.id] = rel_actual.calificacion is not None
+            
+            else:
+                # Caso de seguridad: si no hay relación (aunque debería haberla al estar en eventos_aprobados)
+                es_lider_proyecto[evento.id] = False
+                miembros_proyecto_count[evento.id] = 1 # Asumimos 1 si no hay relación clara
+                criterios_completos[evento.id] = False
+                calificaciones_registradas[evento.id] = False
 
 
         context = {
             'participante': participante,
             'eventos': eventos_aprobados,
             'eventos_pendientes': eventos_pendientes,
-            'relacion': relacion,
+            'relacion': relacion_perfil, # Usamos la primera relación para el link del perfil
             'criterios_completos': criterios_completos,
-            'calificaciones_registradas': calificaciones_registradas,  # ✅ Agregado aquí
+            'calificaciones_registradas': calificaciones_registradas,
+            # NUEVAS VARIABLES
+            'es_lider_proyecto': es_lider_proyecto,
+            'miembros_proyecto_count': miembros_proyecto_count,
+            'relacion_actual_por_evento': relacion_actual_por_evento, # Puede ser útil para otros datos
         }
 
         return render(request, self.template_name, context)
@@ -566,40 +625,72 @@ class CambioPasswordParticipanteView(View):
         messages.success(request, "✅ Contraseña cambiada correctamente.")
         return redirect('dashboard_participante')
 
-######### EDITAR PREINSCRIPCION ########
+######### EDITAR PREINSCRIPCION PARTICIPANTE ########
 @method_decorator(participante_required, name='dispatch')
 class EditarPreinscripcionView(View):
     template_name = 'editar_preinscripcion_participante.html'
 
     def get(self, request, id):
-        relacion = get_object_or_404(ParticipanteEvento, pk=id)
-        participante = relacion.par_eve_participante_fk
-        evento = relacion.par_eve_evento_fk
+        # La relación actual (puede ser líder o miembro)
+        relacion_actual = get_object_or_404(ParticipanteEvento, pk=id)
+        participante = relacion_actual.par_eve_participante_fk
+        evento = relacion_actual.par_eve_evento_fk
         form = EditarUsuarioParticipanteForm(instance=participante.usuario)
 
-        # 🔹 Traer todos los eventos donde está inscrito
+        # 🔹 LÓGICA CLAVE PARA IDENTIFICAR AL LÍDER Y OBTENER EL DOCUMENTO
+        # 1. Determinar si el usuario actual es el líder:
+        #    Es líder si par_eve_proyecto_principal es NULL (es el registro principal)
+        es_lider_del_proyecto = relacion_actual.par_eve_proyecto_principal is None 
+        
+        # 2. Encontrar la relación que posee el documento (la del líder/proyecto principal):
+        if es_lider_del_proyecto:
+            # Si es el líder, su propia relación (relacion_actual) es la que tiene el documento.
+            relacion_documento_principal = relacion_actual
+        else:
+            # Si es un miembro, buscamos el registro principal asociado.
+            relacion_documento_principal = relacion_actual.par_eve_proyecto_principal
+            # Nos aseguramos de que el líder del proyecto exista para el miembro.
+            if not relacion_documento_principal:
+                 # Esto debería ser raro si la lógica de inscripción es correcta, pero es una buena salvaguarda.
+                messages.error(request, "Error: El proyecto principal no fue encontrado.")
+                return redirect('dashboard_participante')
+                
+
+        # 🔹 Traer todas las relaciones donde está inscrito (para la lista de eventos)
         todas_relaciones = ParticipanteEvento.objects.filter(
             par_eve_participante_fk=participante
         ).select_related("par_eve_evento_fk")
 
-        
 
         return render(request, self.template_name, {
             'form': form,
             'evento': evento,
-            'relacion': relacion,
+            'relacion': relacion_actual, # La relación del usuario actual
             'usuario': participante.usuario,
             'participante': participante,
-            'todas_relaciones': todas_relaciones
+            'todas_relaciones': todas_relaciones,
+            # NUEVAS VARIABLES
+            'es_lider_del_proyecto': es_lider_del_proyecto,
+            'relacion_principal': relacion_documento_principal # Relación que tiene el campo 'par_eve_documentos'
         })
 
     def post(self, request, id):
-        relacion = get_object_or_404(ParticipanteEvento, pk=id)
-        participante = relacion.par_eve_participante_fk
-        evento = relacion.par_eve_evento_fk
+        relacion_actual = get_object_or_404(ParticipanteEvento, pk=id)
+        participante = relacion_actual.par_eve_participante_fk
+        evento = relacion_actual.par_eve_evento_fk
         usuario = participante.usuario
-
         form = EditarUsuarioParticipanteForm(request.POST, instance=usuario)
+        
+        # Lógica de identificación de líder, igual que en GET
+        es_lider_del_proyecto = relacion_actual.par_eve_proyecto_principal is None
+        if es_lider_del_proyecto:
+            relacion_documento_principal = relacion_actual
+        elif relacion_actual.par_eve_proyecto_principal:
+             relacion_documento_principal = relacion_actual.par_eve_proyecto_principal
+        else:
+            messages.error(request, "Error: El proyecto principal no fue encontrado.")
+            return redirect('dashboard_participante')
+
 
         # Contraseñas
         contrasena_actual = request.POST.get('nueva_contrasena')
@@ -610,8 +701,12 @@ class EditarPreinscripcionView(View):
             usuario = form.save(commit=False)
             usuario.ultimo_acceso = localtime(now())
 
-            # Validar y cambiar la contraseña
+            # Validar y cambiar la contraseña (Lógica completa)
             if contrasena_actual or nueva_contrasena or confirmar_nueva:
+                if not contrasena_actual or not nueva_contrasena or not confirmar_nueva:
+                    messages.error(request, "Debe completar los tres campos de contraseña para realizar el cambio.")
+                    return redirect('editar_preinscripcion', id=id)
+
                 if not usuario.check_password(contrasena_actual):
                     messages.error(request, "La contraseña actual no es correcta.")
                     return redirect('editar_preinscripcion', id=id)
@@ -624,33 +719,40 @@ class EditarPreinscripcionView(View):
 
                 usuario.set_password(nueva_contrasena)
                 update_session_auth_hash(request, usuario)
-
+            
             usuario.save()
 
-            # 🔹 Guardar documentos de TODOS los eventos
-            todas_relaciones = ParticipanteEvento.objects.filter(
-                par_eve_participante_fk=participante
-            )
+            # 🔹 LÓGICA DE ACTUALIZACIÓN DE DOCUMENTO (SOLO PARA EL LÍDER)
+            file_key = "par_eve_documentos" # El input ahora tiene un nombre genérico en el template
+            documento = request.FILES.get(file_key)
+            
+            if documento:
+                if es_lider_del_proyecto and relacion_documento_principal.par_eve_estado != "Aprobado":
+                    relacion_documento_principal.par_eve_documentos = documento
+                    relacion_documento_principal.save()
+                elif not es_lider_del_proyecto:
+                    messages.error(request, "🚫 Solo el líder del proyecto puede subir o actualizar el documento de exposición.")
+                elif relacion_documento_principal.par_eve_estado == "Aprobado":
+                    messages.warning(request, f"El documento del evento {relacion_documento_principal.par_eve_evento_fk.eve_nombre} ya está aprobado. No puedes subir un nuevo documento.")
 
-            for r in todas_relaciones:
-                file_key = f"par_eve_documentos_{r.id}"
-                documento = request.FILES.get(file_key)
-                if documento and r.par_eve_estado != "Aprobado":
-                    r.par_eve_documentos = documento
-                    r.save()
-                elif documento and r.par_eve_estado == "Aprobado":
-                    messages.warning(request, f"El evento {r.par_eve_evento_fk.eve_nombre} ya está aprobado. No puedes subir un nuevo documento.")
-
-            messages.success(request, "Tu información fue actualizada correctamente.")
+            messages.success(request, "Tu información de perfil fue actualizada correctamente.")
             return redirect('editar_preinscripcion', id=id)
+
+        # Si el formulario no es válido, volvemos a renderizar
+        todas_relaciones = ParticipanteEvento.objects.filter(par_eve_participante_fk=participante).select_related("par_eve_evento_fk")
+        relacion_documento_principal = relacion_actual if es_lider_del_proyecto else relacion_actual.par_eve_proyecto_principal
 
         return render(request, self.template_name, {
             'form': form,
             'evento': evento,
-            'relacion': relacion,
+            'relacion': relacion_actual,
             'usuario': participante.usuario,
-            'participante': participante
+            'participante': participante,
+            'todas_relaciones': todas_relaciones,
+            'es_lider_del_proyecto': es_lider_del_proyecto,
+            'relacion_principal': relacion_documento_principal
         })
+
 
 
 
@@ -838,3 +940,368 @@ class ParticipanteCancelacionView(View):
 
         # 6️⃣ Redirigir al dashboard del participante
         return redirect('dashboard_participante')
+
+    
+
+
+
+
+
+############# AGREGAR MIEMBROS ################
+@method_decorator(login_required, name='dispatch') 
+class AgregarMiembrosView(View):
+    template_name = 'agregar_miembros.html'
+    
+    # Máximo permitido de miembros en un grupo (incluido el líder)
+    MAX_MIEMBROS = 5
+
+    def get(self, request, evento_id):
+        participante_lider_id = request.session.get('participante_id')
+        if not participante_lider_id:
+            messages.error(request, "Error de sesión. No se encontró el ID del líder.")
+            return redirect('login_view')
+
+        lider = get_object_or_404(Participante, id=participante_lider_id)
+        evento = get_object_or_404(Evento, id=evento_id)
+        
+        # Obtener el registro principal del LÍDER (es_grupo=1 y principal=NULL)
+        relacion_lider = get_object_or_404(
+            ParticipanteEvento, 
+            par_eve_participante_fk=lider, 
+            par_eve_evento_fk=evento,
+            par_eve_es_grupo=1, 
+            par_eve_proyecto_principal__isnull=True 
+        )
+        
+        # Contar miembros: (Miembros que apuntan al líder) + 1 (el líder)
+        miembros_actuales = ParticipanteEvento.objects.filter(
+            par_eve_evento_fk=evento,
+            par_eve_proyecto_principal=relacion_lider
+        ).count() + 1 
+        
+        if miembros_actuales >= self.MAX_MIEMBROS:
+            messages.error(request, f"El grupo del evento {evento.eve_nombre} ya alcanzó el máximo de {self.MAX_MIEMBROS} miembros.")
+            return redirect('dashboard_participante')
+            
+        form = MiembroParticipanteForm() 
+        
+        return render(request, self.template_name, {
+            'form': form,
+            'evento': evento,
+            'miembros_actuales': miembros_actuales,
+            'max_miembros': self.MAX_MIEMBROS,
+        })
+
+    def post(self, request, evento_id):
+        evento = get_object_or_404(Evento, id=evento_id)
+        participante_lider_id = request.session.get('participante_id')
+        lider = get_object_or_404(Participante, id=participante_lider_id)
+        
+        # Obtener el registro principal del LÍDER
+        relacion_lider = get_object_or_404(
+            ParticipanteEvento, 
+            par_eve_participante_fk=lider, 
+            par_eve_evento_fk=evento,
+            par_eve_es_grupo=1, 
+            par_eve_proyecto_principal__isnull=True 
+        )
+        
+        miembros_actuales = ParticipanteEvento.objects.filter(
+            par_eve_evento_fk=evento,
+            par_eve_proyecto_principal=relacion_lider
+        ).count() + 1
+        
+        if miembros_actuales >= self.MAX_MIEMBROS:
+            messages.error(request, f"El grupo del evento {evento.eve_nombre} ya alcanzó el máximo de {self.MAX_MIEMBROS} miembros.")
+            return redirect('dashboard_participante')
+
+        form = MiembroParticipanteForm(request.POST)
+
+        if form.is_valid():
+            cedula = form.cleaned_data['cedula']
+            username = form.cleaned_data['username']
+            email = form.cleaned_data['email']
+            first_name = form.cleaned_data['first_name']
+            last_name = form.cleaned_data['last_name']
+            telefono = form.cleaned_data['telefono']
+
+            # 1. Validación de unicidad de Usuario
+            if Usuario.objects.filter(cedula=cedula).exists() or \
+               Usuario.objects.filter(username=username).exists() or \
+               Usuario.objects.filter(email=email).exists():
+                messages.error(request, "Error: Cédula, nombre de usuario o correo ya existen.")
+                return redirect('agregar_miembro_par', evento_id=evento_id)
+
+            contrasena_temporal = get_random_string(length=10)
+            
+            try:
+                with transaction.atomic():
+                    # 1. Crear el nuevo Usuario con el rol establecido
+                    nuevo_usuario = Usuario.objects.create(
+                        cedula=cedula,
+                        username=username,
+                        email=email,
+                        first_name=first_name,
+                        last_name=last_name,
+                        telefono=telefono,
+                        is_active=True,
+                        password=make_password(contrasena_temporal),
+                        last_login=None,
+                        rol='PARTICIPANTE'  # Rol fijo para miembros
+                    )
+                    
+                    # 2. Asignar el nuevo Usuario al Grupo del Evento (app_usuarios_usuario_groups)
+                    codigo_proyecto = relacion_lider.par_eve_codigo_proyecto 
+                    
+                    # Búsqueda robusta por el código de proyecto
+                    evento_group = Group.objects.filter(name__icontains=codigo_proyecto).first()
+                    
+                    if not evento_group:
+                         raise Group.DoesNotExist(f"No se encontró el grupo de Django cuyo nombre contiene el código de proyecto: {codigo_proyecto}. Por favor, verifique la tabla auth_group.")
+
+                    nuevo_usuario.groups.add(evento_group) # CREA LA RELACIÓN
+
+                    # 3. Crear el registro de Participante
+                    nuevo_participante = Participante.objects.create(
+                        usuario=nuevo_usuario
+                    )
+                    
+                    # 4. Crear el registro en ParticipanteEvento para el MIEMBRO (CORREGIDO)
+                    nueva_relacion = ParticipanteEvento(
+                        par_eve_participante_fk=nuevo_participante,
+                        par_eve_evento_fk=evento,
+                        par_eve_estado='Aprobado',
+                        
+                        # --- CORRECCIONES SOLICITADAS ---
+                        par_eve_es_grupo=0, # 0 para miembros
+                        par_eve_proyecto_principal=relacion_lider, # Apunta al ID del líder
+                        par_eve_codigo_proyecto=None, # Solo el líder tiene el código
+                        # --------------------------------
+                    )
+
+                    # Lógica de generación de CLAVE y QR
+                    clave_acceso = ''.join(random.choices(string.ascii_letters + string.digits, k=10))
+                    nueva_relacion.par_eve_clave = clave_acceso
+                    qr_data = f"Participante: {nuevo_usuario.username}, Evento: {evento.eve_nombre}, Clave: {clave_acceso}"
+                    qr_img = qrcode.make(qr_data)
+                    buffer = BytesIO()
+                    qr_img.save(buffer, format='PNG')
+                    file_name = f"qr_participante_{nuevo_participante.id}.png"
+                    nueva_relacion.par_eve_qr.save(file_name, ContentFile(buffer.getvalue()), save=False)
+                    nueva_relacion.save()
+
+                # 5. Envío de correo electrónico
+                try:
+                    qr_file_path = nueva_relacion.par_eve_qr.path 
+                    send_mail_participante_grupo(
+                        to_email=nuevo_usuario.email,
+                        event_name=evento.eve_nombre,
+                        group_name='Participante', 
+                        username=nuevo_usuario.username,
+                        password=contrasena_temporal,
+                        clave_acceso=clave_acceso,
+                        qr_file_path=qr_file_path
+                    )
+                    messages.success(request, f"Miembro **{nuevo_usuario.username}** agregado y correo de bienvenida enviado. 🎉")
+                except Exception as e:
+                    messages.warning(request, f"Miembro **{nuevo_usuario.username}** agregado. ¡PERO! Hubo un error al enviar el correo. Verifique la configuración. 📧")
+                    
+                return redirect('dashboard_participante')
+
+            except Group.DoesNotExist as e:
+                messages.error(request, f"Error de configuración de Grupo: {e}")
+                return redirect('agregar_miembro_par', evento_id=evento_id)
+            except Exception as e:
+                messages.error(request, f"Ocurrió un error al guardar el miembro: {e}")
+                return redirect('agregar_miembro_par', evento_id=evento_id)
+        
+        # Si el formulario no es válido, renderizar de nuevo con errores
+        miembros_actuales = ParticipanteEvento.objects.filter(
+            par_eve_evento_fk=evento,
+            par_eve_proyecto_principal=relacion_lider
+        ).count() + 1
+        
+        return render(request, self.template_name, {
+            'form': form,
+            'evento': evento,
+            'miembros_actuales': miembros_actuales,
+            'max_miembros': self.MAX_MIEMBROS,
+        })
+
+
+@method_decorator(login_required, name='dispatch') 
+class ListaMiembrosView(View):
+    template_name = 'lista_miembros.html'
+    MAX_MIEMBROS = 5
+
+    def _get_context_data(self, request, evento_id):
+        # ... (La función auxiliar _get_context_data se mantiene sin cambios) ...
+        participante_logueado_id = request.session.get('participante_id')
+        if not participante_logueado_id:
+            return None, None, None, None, "Error de sesión. No se encontró el ID del participante logueado."
+
+        participante = get_object_or_404(Participante, id=participante_logueado_id)
+        evento = get_object_or_404(Evento, id=evento_id)
+
+        try:
+            relacion_participante = ParticipanteEvento.objects.get(
+                par_eve_participante_fk=participante, 
+                par_eve_evento_fk=evento,
+            )
+        except ParticipanteEvento.DoesNotExist:
+            return None, None, None, None, "No estás registrado como participante en este evento."
+
+        if relacion_participante.par_eve_es_grupo == 1 and relacion_participante.par_eve_proyecto_principal is None:
+            es_lider = True
+            relacion_lider = relacion_participante
+        elif relacion_participante.par_eve_es_grupo == 0 and relacion_participante.par_eve_proyecto_principal is not None:
+            es_lider = False
+            relacion_lider = relacion_participante.par_eve_proyecto_principal
+        else:
+            return None, None, None, None, "Error en la estructura del grupo de participación."
+
+        miembros_del_grupo = ParticipanteEvento.objects.filter(
+            Q(par_eve_evento_fk=evento) &
+            (Q(par_eve_proyecto_principal=relacion_lider) | Q(id=relacion_lider.id))
+        ).select_related('par_eve_participante_fk__usuario').order_by('-par_eve_es_grupo', 'par_eve_participante_fk__usuario__first_name') 
+        
+        miembros_actuales = miembros_del_grupo.count()
+        
+        miembros_a_borrar = [
+            rel for rel in miembros_del_grupo if rel.par_eve_es_grupo == 0
+        ]
+        
+        context = {
+            'evento': evento,
+            'relacion_lider': relacion_lider,
+            'es_lider': es_lider, 
+            'miembros': miembros_del_grupo,
+            'miembros_a_borrar': miembros_a_borrar,
+            'miembros_actuales': miembros_actuales,
+            'max_miembros': self.MAX_MIEMBROS,
+        }
+        return context, participante, relacion_lider, es_lider, None
+    # ----------------------------------------------------------------------------------
+
+    def get(self, request, evento_id):
+        # ... (get se mantiene igual) ...
+        context, _, _, _, error_msg = self._get_context_data(request, evento_id)
+        
+        if error_msg:
+            messages.error(request, error_msg)
+            return redirect('dashboard_participante')
+            
+        return render(request, self.template_name, context)
+
+    
+    def post(self, request, evento_id):
+        action = request.POST.get('action', 'eliminar')
+        miembro_id_objetivo = request.POST.get('miembro_id')
+
+        # ... (Validaciones iniciales de miembro_id, contexto, y es_lider se mantienen) ...
+        if not miembro_id_objetivo:
+            messages.error(request, "No se especificó el miembro objetivo.")
+            return redirect('ver_miembros_par', evento_id=evento_id)
+
+        context, _, relacion_lider_actual, es_lider, error_msg = self._get_context_data(request, evento_id)
+        
+        if error_msg:
+            messages.error(request, error_msg)
+            return redirect('dashboard_participante')
+        
+        if not es_lider:
+            messages.error(request, "Solo el líder del grupo puede realizar esta acción.")
+            return redirect('ver_miembros_par', evento_id=evento_id)
+
+        # 1. Buscar la relación ParticipanteEvento del miembro objetivo
+        try:
+            relacion_miembro_objetivo = ParticipanteEvento.objects.get(
+                id=miembro_id_objetivo,
+                par_eve_proyecto_principal=relacion_lider_actual, 
+                par_eve_es_grupo=0 # Debe ser un miembro
+            )
+        except ParticipanteEvento.DoesNotExist:
+            messages.error(request, "El miembro no existe o no pertenece a tu grupo.")
+            return redirect('ver_miembros_par', evento_id=evento_id)
+        
+        usuario_miembro = relacion_miembro_objetivo.par_eve_participante_fk.usuario
+        nombre_miembro = f"{usuario_miembro.first_name} {usuario_miembro.last_name} ({usuario_miembro.username})"
+
+        # -----------------------------------------------------------------
+        # LÓGICA DE ELIMINAR MIEMBRO (Se mantiene igual)
+        # -----------------------------------------------------------------
+        if action == 'eliminar':
+            # ... (Lógica de eliminación anterior) ...
+            try:
+                with transaction.atomic():
+                    relacion_miembro_objetivo.delete()
+                    relacion_miembro_objetivo.par_eve_participante_fk.usuario.delete() 
+                    messages.success(request, f"El miembro **{usuario_miembro.first_name}** ha sido eliminado del grupo. 🗑️")
+            except Exception as e:
+                messages.error(request, f"Error al intentar eliminar al miembro: {e}")
+            
+            return redirect('ver_miembros_par', evento_id=evento_id)
+
+        # -----------------------------------------------------------------
+        # LÓGICA DE TRANSFERIR LIDERAZGO (CORREGIDA Y OPTIMIZADA)
+        # -----------------------------------------------------------------
+        elif action == 'transferir_liderazgo':
+            try:
+                with transaction.atomic():
+                    
+                    # El registro del LÍDER ACTUAL es 'relacion_lider_actual'
+                    # El registro del NUEVO LÍDER es 'relacion_miembro_objetivo'
+                    
+                    # 1. Capturar los datos del proyecto del líder actual (código y documentos)
+                    codigo_proyecto_antiguo = relacion_lider_actual.par_eve_codigo_proyecto
+                    documentos_antiguos = getattr(relacion_lider_actual, 'par_eve_documentos', None) 
+
+                    # 2. Promover al Miembro a Líder (Nuevo Líder)
+                    # NOTA: Guardamos los cambios de liderazgo/código/documentos antes
+                    # de actualizar a los demás miembros en el paso 4.
+                    relacion_miembro_objetivo.par_eve_es_grupo = 1
+                    relacion_miembro_objetivo.par_eve_proyecto_principal = None # El líder no tiene principal
+                    relacion_miembro_objetivo.par_eve_codigo_proyecto = codigo_proyecto_antiguo # HEREDA CÓDIGO
+                    relacion_miembro_objetivo.par_eve_documentos = documentos_antiguos # HEREDA DOCUMENTOS
+                    relacion_miembro_objetivo.save() 
+                    
+                    # 3. Degradar al Líder Actual a Miembro (Antiguo Líder)
+                    relacion_lider_actual.par_eve_es_grupo = 0
+                    relacion_lider_actual.par_eve_proyecto_principal = relacion_miembro_objetivo # APUNTA al NUEVO LÍDER
+                    relacion_lider_actual.par_eve_codigo_proyecto = None # CÓDIGO A NULL
+                    relacion_lider_actual.par_eve_documentos = None # DOCUMENTOS A NULL
+                    relacion_lider_actual.save()
+                    
+                    # 4. 🔥 CRUCIAL: Actualizar a TODOS los miembros restantes para que apunten al NUEVO líder.
+                    # Se excluye al nuevo líder (ya está actualizado en el paso 2 y su principal es NULL).
+                    # Se incluye al líder saliente (ya está actualizado en el paso 3 y su principal es el nuevo líder).
+                    evento = relacion_lider_actual.par_eve_evento_fk  # Obtener el evento desde la relación del líder actual
+                    ParticipanteEvento.objects.filter(
+                        par_eve_evento_fk=evento,
+                        par_eve_proyecto_principal=relacion_lider_actual # Apuntaban al antiguo líder
+                    ).exclude(
+                        id=relacion_miembro_objetivo.id # Excluye al nuevo líder (aunque ya tiene principal=NULL)
+                    ).update(
+                        par_eve_proyecto_principal=relacion_miembro_objetivo # ¡Asignan el nuevo líder!
+                    )
+                    
+                    # NOTA: La lógica se puede simplificar en el paso 4 para actualizar todos
+                    # los que apuntaban al antiguo líder, incluyendo al antiguo líder
+                    # si no lo hubiéramos actualizado en el paso 3. Pero tal como está, 
+                    # ya el paso 3 se encarga del antiguo líder y el paso 4 de los miembros.
+                    # Mantenemos esta estructura explícita para mayor claridad de la transición.
+
+                    messages.success(request, f"El liderazgo se ha transferido exitosamente a **{usuario_miembro.first_name}**. Ahora eres un miembro del proyecto. ✨")
+                    
+                return redirect('ver_miembros_par', evento_id=evento_id)
+
+            except Exception as e:
+                messages.error(request, f"Error al transferir el liderazgo: {e}")
+                return redirect('ver_miembros_par', evento_id=evento_id)
+        
+        # -----------------------------------------------------------------
+        
+        messages.error(request, "Acción desconocida.")
+        return redirect('ver_miembros_par', evento_id=evento_id)
+
+

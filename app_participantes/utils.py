@@ -78,3 +78,89 @@ def obtener_estadisticas_evento(evento):
         'total_proyectos': proyectos_individuales + proyectos_grupales,
         'total_participantes': total_participantes
     }
+
+
+
+
+
+
+
+# tu_app/utils.py
+
+from django.core.mail import EmailMessage
+from django.conf import settings
+import os
+from django.template.loader import render_to_string # Opcional: usar template HTML para el cuerpo del correo
+
+def send_mail_participante_grupo(to_email, event_name, group_name, username, password, clave_acceso, qr_file_path):
+    """
+    Envía un correo electrónico al nuevo participante de un grupo con sus credenciales 
+    y el código QR de acceso.
+
+    Args:
+        to_email (str): Correo electrónico del destinatario.
+        event_name (str): Nombre del evento al que ha sido asignado.
+        group_name (str): Nombre del grupo/rol asignado ('PARTICIPANTE').
+        username (str): Nombre de usuario para iniciar sesión.
+        password (str): Contraseña temporal generada.
+        clave_acceso (str): Clave de acceso específica del evento.
+        qr_file_path (str): Ruta completa al archivo QR guardado en el sistema de archivos.
+    """
+    
+    # 1. Definir el asunto y el cuerpo del mensaje
+    subject = f"¡Asignación Exitosa! Acceso a {event_name} - {group_name}"
+    
+    # Puedes usar un template HTML para un correo más profesional:
+    # html_content = render_to_string('emails/participante_asignado.html', {
+    #     'username': username,
+    #     'password': password,
+    #     'clave_acceso': clave_acceso,
+    #     'event_name': event_name,
+    #     'group_name': group_name,
+    #     # ... otros datos
+    # })
+    
+    # Usando un cuerpo de texto plano por simplicidad:
+    body = f"""
+    ¡Hola Exponente {username}!
+
+    Has sido exitosamente asignado como miembro del grupo en el evento - {event_name}.
+    Tus credenciales de acceso a la plataforma son:
+    
+    - Usuario: {username}
+    - Contraseña: {password}
+    
+    Tu clave de acceso específica para este evento es: **{clave_acceso}**
+    Adjunto a este correo encontrarás tu Código QR para un acceso rápido al evento.
+    Por favor, cambia tu contraseña al iniciar sesión por primera vez.
+    ¡Te esperamos!
+    
+    Equipo de Exponente-Eventos | Event-Soft
+    """
+    
+    # 2. Crear el objeto EmailMessage
+    email = EmailMessage(
+        subject,
+        body,
+        settings.EMAIL_HOST_USER,  # Remitente (definido en settings.py)
+        [to_email],                # Destinatario
+    )
+    
+    # Si usas HTML:
+    # email.content_subtype = "html"
+    # email.attach_alternative(html_content, "text/html")
+
+    # 3. Adjuntar el archivo QR
+    if os.path.exists(qr_file_path):
+        email.attach_file(qr_file_path)
+    else:
+        # Esto solo sirve como alerta, idealmente el QR ya está guardado.
+        print(f"Advertencia: No se encontró el archivo QR en la ruta: {qr_file_path}")
+
+    # 4. Enviar el correo
+    try:
+        email.send()
+        return True
+    except Exception as e:
+        print(f"Error al enviar correo a {to_email}: {e}")
+        return False

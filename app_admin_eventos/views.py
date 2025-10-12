@@ -652,13 +652,13 @@ class ValidacionParticipanteView(View):
                 for miembro in todos_miembros:
                     miembros_info.append({
                         'nombre': f"{miembro.par_eve_participante_fk.usuario.first_name} {miembro.par_eve_participante_fk.usuario.last_name}",
-                        'cedula': miembro.par_eve_participante_fk.id,
+                        'cedula': miembro.par_eve_participante_fk.usuario.cedula,
                         'es_lider': miembro.par_eve_proyecto_principal is None
                     })
 
             data.append({
                 'id': par.id,
-                'cedula': participante.id,
+                'cedula': participante.usuario.cedula,
                 'nombre': participante.usuario.first_name,
                 'apellido': participante.usuario.last_name,
                 'correo': participante.usuario.email,
