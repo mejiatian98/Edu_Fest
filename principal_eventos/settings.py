@@ -150,5 +150,3 @@ EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
 AUTH_USER_MODEL = 'app_usuarios.Usuario'
 
 SITE_URL = os.getenv('SITE_URL')
-
-SUPERADMIN_EMAIL = os.getenv("SUPERADMIN_EMAIL")

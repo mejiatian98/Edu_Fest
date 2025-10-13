@@ -26,7 +26,7 @@ class SharingEventoAsistenteTests(TestCase):
             username='superadmin', password='password123', rol=Usuario.Roles.SUPERADMIN
         )
         cls.admin_evento = AdministradorEvento.objects.create(
-            cedula='1234567890', usuario=cls.super_admin_user
+            usuario=cls.super_admin_user
         )
 
         # 2. Crear datos de Asistente
@@ -34,7 +34,7 @@ class SharingEventoAsistenteTests(TestCase):
             username='asistente1', password='password123', rol=Usuario.Roles.ASISTENTE
         )
         cls.asistente = Asistente.objects.create(
-            cedula='9876543210', usuario=cls.asistente_user
+            usuario=cls.asistente_user
         )
 
         # 3. Crear archivos simulados (usando un GIF simple para imagen)
