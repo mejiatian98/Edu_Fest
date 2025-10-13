@@ -300,18 +300,42 @@ class EventoCreateView(CreateView):
                 eve_cat_categoria_fk=categoria
             )
 
-        # ✅ Enviar notificación por correo al superadmin
-        send_mail(
-            subject=f'Nuevo evento creado: {evento.eve_nombre}',
-            message=f'El Administrador "{administrador.usuario.first_name} {administrador.usuario.last_name}" '
-                    f'ha creado el evento "{evento.eve_nombre}".',
-            from_email=DEFAULT_FROM_EMAIL,
-            recipient_list=[administrador.usuario.email],
-            fail_silently=False # o settings.SUPERADMIN_EMAIL si lo defines en .env
-        )
+        # ✅ Obtener área del evento
+        area = form.cleaned_data.get('area')
 
-        # ✅ Mensaje de éxito
-        messages.success(self.request, "Se ha creado el evento exitosamente")
+        # ✅ Datos del usuario administrador
+        nombre_admin = f"{administrador.usuario.first_name} {administrador.usuario.last_name}"
+        cedula_admin = getattr(administrador.usuario, "cedula", "No registrada")
+
+        # ✅ Superusuario desde .env (configurado en settings)
+        superadmin_email = getattr(settings, "SUPERADMIN_EMAIL", None)
+
+        if superadmin_email:
+            asunto = f"Nuevo evento creado por {nombre_admin}"
+            mensaje = (
+                f"Estimado Superadministrador:\n\n"
+                f"El administrador de eventos {nombre_admin} (Cédula: {cedula_admin}) ha creado un nuevo evento.\n\n"
+                f"📌 Detalles del evento:\n"
+                f"- Nombre del evento: {evento.eve_nombre}\n"
+                f"- Área: {area.are_nombre if area else 'Sin área especificada'}\n"
+                f"- Ciudad: {evento.eve_ciudad}\n"
+                f"- Fecha de inicio: {evento.eve_fecha_inicio}\n"
+                f"- Fecha de finalización: {evento.eve_fecha_fin}\n\n"
+                f"Puedes revisar más información en el panel de administración.\n\n"
+                f"Atentamente,\n"
+                f"El sistema de gestión de eventos."
+            )
+
+            send_mail(
+                subject=asunto,
+                message=mensaje,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[superadmin_email],
+                fail_silently=False,
+            )
+
+        # ✅ Mensaje de éxito en la interfaz
+        messages.success(self.request, f"Se ha creado el evento '{evento.eve_nombre}' exitosamente.")
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -392,7 +416,7 @@ def eliminar_categoria(request, pk):
 
 ###########################--- Actualizar Evento ---##########################
 @method_decorator(admin_required, name='dispatch')
-class EventoUpdateView(UpdateView):
+class EventoEditarView(UpdateView):
     model = Evento
     form_class = EventoForm
     template_name = 'editar_evento.html'
@@ -439,7 +463,6 @@ class CancelarEventoView(View):
             messages.info(request, "Este evento ya está en estado de cancelación pendiente.")
         else:
             evento.eve_estado = "Cancelado"
-            evento.eve_cancelacion_iniciada = now()  
             evento.save()
             messages.success(request, "El evento ha sido marcado como cancelado. ")
 

@@ -49,9 +49,9 @@
             <div class="col-md-4">
                 {{ form.eve_estado.label_tag }}
                 <select name="eve_estado" id="eve_estado" class="form-control">
-                    <option value="">Seleccione el estado</option>
-                    <option value="Publicado" {% if form.eve_estado.value == "Publicado" %}selected{% endif %}>Publicado</option>
-                    <option value="Editando" {% if form.eve_estado.value == "Editando" %}selected{% endif %}>Editando</option>
+                    <option value="">Seleccione el estado </option>
+                    <option class="text-success" value="Publicado" {% if form.eve_estado.value == "Publicado" %}selected{% endif %}>Publicar ahora mismo</option>
+                    <option class="text-info" value="Editando" {% if form.eve_estado.value == "Editando" %}selected{% endif %}>Seguir Editando y más tarde lo publicaré</option>
                 </select>
             </div>
 
@@ -70,28 +70,48 @@
             </div>
         </div>
 
-        <!-- Área -->
+
+        <!-- Área y Categoría -->
         <div class="row mb-3">
-            <div class="col-md-6 mb-4">
+            <!-- Área -->
+            <div class="col-md-12 mb-4">
+                {{ form.area.label_tag }}
                 <select name="area" id="id_area" class="form-control">
-                    <option value="">Seleccione el Area y luego la categoria</option>
                     {% for area in form.fields.area.queryset %}
-                        <option value="{{ area.id }}">{{ area.are_nombre }}</option>
+                        <option 
+                            value="{{ area.id }}" 
+                            {% if form.instance.area and form.instance.area.id == area.id %}selected{% endif %}
+                        >
+                            {{ area.are_nombre }}
+                        </option>
                     {% endfor %}
                 </select>
             </div>
-
-            <!-- Categoria -->
+            <!-- Categorías (derecha) -->
             <div class="col-md-6 mb-4">
+                {{ form.categorias.label_tag }}
                 <select name="categorias" id="id_categoria" class="form-control" multiple>
                     {% for categoria in form.fields.categorias.queryset %}
-                        <option value="{{ categoria.id }}" data-area="{{ categoria.cat_area_fk.id }}">
+                        <option 
+                            value="{{ categoria.id }}"
+                            data-area="{{ categoria.cat_area_fk.id }}"
+                            data-descripcion="{{ categoria.cat_descripcion|escapejs }}"
+                            {% if categoria in selected_categorias %}selected{% endif %}
+                        >
                             {{ categoria.cat_nombre }}
                         </option>
                     {% endfor %}
                 </select>
             </div>
-        </div>
+            <!-- Descripción de la categoría seleccionada (izquierda) -->
+            <div class="col-md-6 mb-4">
+                <label for="cat_descripcion" class="form-label">
+                    Descripción de la categoría seleccionada
+                </label>
+                <textarea id="cat_descripcion" class="form-control" rows="4" readonly></textarea>
+            </div>
+        </div>                  
+
 
         <br>
         <br>
@@ -138,6 +158,8 @@
 
 <script src="{% static 'js/Previsualizarimg_pdfs.js' %}"></script>
 <script src="{% static 'js/filtrar_areas_categorias.js' %}"></script>
+<script src="{% static 'js/da_descripcion_categoria.js' %}"></script>
+<script src="{% static 'js/calendario_select_fechas_actuales.js' %}"></script>
 
 
 

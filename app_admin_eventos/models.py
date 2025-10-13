@@ -24,7 +24,6 @@ class Evento(models.Model):
     eve_fecha_inicio = models.DateField()
     eve_fecha_fin = models.DateField()
     eve_estado = models.CharField(max_length=45)
-    eve_cancelacion_iniciada = models.DateTimeField(null=True, blank=True) 
     eve_imagen = models.ImageField(upload_to='upload/', verbose_name="Imagen/Logo del Evento")
     eve_administrador_fk = models.ForeignKey('app_usuarios.AdministradorEvento', on_delete=models.CASCADE)
     eve_tienecosto = models.CharField(max_length=45)

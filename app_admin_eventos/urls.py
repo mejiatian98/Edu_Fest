@@ -14,7 +14,7 @@ urlpatterns = [
     path('cambiar_password/admin/', views.CambioPasswordAdminView.as_view(), name='cambio_password_admin'),
 
 
-    path('evento/editar/<int:pk>/', views.EventoUpdateView.as_view(), name='editar_evento'),
+    path('evento/editar/<int:pk>/', views.EventoEditarView.as_view(), name='editar_evento'),
     path('ver_info_evento/<int:pk>/', views.EventoDetailView.as_view(), name='ver_info_evento_admin'),
 
     

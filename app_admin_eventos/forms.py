@@ -1,3 +1,4 @@
+from datetime import timezone
 from django import forms
 from .models import Evento, Categoria, Area
 from app_usuarios.models import Usuario
@@ -16,6 +17,25 @@ class EventoForm(forms.ModelForm):
         widget=forms.SelectMultiple(attrs={'class': 'form-control', 'id': 'id_categoria'}),
         required=True,
         label="Categorías"
+    )
+
+
+    eve_fecha_inicio = forms.DateField(
+        widget=forms.DateInput(
+            attrs={'type': 'date', 'class': 'form-control'},
+            format='%Y-%m-%d'
+        ),
+        input_formats=['%Y-%m-%d'],
+        required=True
+    )
+
+    eve_fecha_fin = forms.DateField(
+        widget=forms.DateInput(
+            attrs={'type': 'date', 'class': 'form-control'},
+            format='%Y-%m-%d'
+        ),
+        input_formats=['%Y-%m-%d'],
+        required=True
     )
 
     class Meta:
@@ -51,6 +71,24 @@ class EventoForm(forms.ModelForm):
             'eve_capacidad': forms.NumberInput(attrs={'class': 'form-control'}),
             'eve_tienecosto': forms.Select(attrs={'class': 'form-control'}),
         }
+
+
+        def clean(self):
+            cleaned_data = super().clean()
+            fecha_inicio = cleaned_data.get('eve_fecha_inicio')
+            fecha_fin = cleaned_data.get('eve_fecha_fin')
+            hoy = timezone.localdate()
+
+            if fecha_inicio and fecha_inicio < hoy:
+                self.add_error('eve_fecha_inicio', 'La fecha de inicio no puede ser anterior a hoy.')
+
+            if fecha_fin and fecha_fin < hoy:
+                self.add_error('eve_fecha_fin', 'La fecha de finalización no puede ser anterior a hoy.')
+
+            if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
+                self.add_error('eve_fecha_fin', 'La fecha de finalización no puede ser anterior a la fecha de inicio.')
+
+            return cleaned_data
 
 
 class EditarUsuarioAdministradorForm(forms.ModelForm):
