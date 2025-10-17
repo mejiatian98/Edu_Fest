@@ -50,6 +50,7 @@ from django.template.loader import render_to_string
 from xhtml2pdf import pisa
 from django.templatetags.static import static
 from django.contrib.sites.models import Site
+from django.contrib.auth import logout
 
 from app_admin_eventos.models import Evento, MemoriaEvento
 from app_asistentes.models import AsistenteEvento
@@ -143,6 +144,7 @@ class CambioPasswordAdminView(View):
         password1 = request.POST.get('password1')
         password2 = request.POST.get('password2')
 
+        # ⚠️ Validaciones
         if password1 != password2:
             messages.error(request, "❌ Las contraseñas no coinciden.")
             return render(request, self.template_name)
@@ -151,22 +153,23 @@ class CambioPasswordAdminView(View):
             messages.error(request, "❌ La contraseña debe tener al menos 6 caracteres.")
             return render(request, self.template_name)
 
+        # 🔍 Obtener el administrador actual
         admin_id = request.session.get('admin_id')
         admin = get_object_or_404(AdministradorEvento, pk=admin_id)
         usuario = admin.usuario
 
         # 🔐 Cambiar contraseña
         usuario.set_password(password1)
-        usuario.last_login = timezone.now()
         usuario.save()
 
+        # 🔒 Cerrar sesión actual
+        logout(request)
 
+        # ✅ Enviar mensaje para la siguiente vista (login)
+        messages.success(request, "✅ Contraseña cambiada correctamente. Inicia sesión con tu nueva contraseña.")
 
-        # ✅ Volver a autenticar al usuario
-        login(request, usuario)
-
-        messages.success(request, "✅ Contraseña cambiada correctamente.")
-        return redirect('dashboard_admin')
+        # 🔁 Redirigir al login
+        return redirect('login_view')
 
 
 
