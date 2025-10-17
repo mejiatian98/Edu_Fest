@@ -350,6 +350,7 @@ class Evaluador(models.Model):
 
 
 class AdministradorEvento(models.Model):
+    
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='administrador_evento') 
 
     def __str__(self):

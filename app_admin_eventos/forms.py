@@ -73,22 +73,22 @@ class EventoForm(forms.ModelForm):
         }
 
 
-        def clean(self):
-            cleaned_data = super().clean()
-            fecha_inicio = cleaned_data.get('eve_fecha_inicio')
-            fecha_fin = cleaned_data.get('eve_fecha_fin')
-            hoy = timezone.localdate()
+    def clean(self):
+        cleaned_data = super().clean()
+        fecha_inicio = cleaned_data.get('eve_fecha_inicio')
+        fecha_fin = cleaned_data.get('eve_fecha_fin')
+        hoy = timezone.localdate()
 
-            if fecha_inicio and fecha_inicio < hoy:
-                self.add_error('eve_fecha_inicio', 'La fecha de inicio no puede ser anterior a hoy.')
+        if fecha_inicio and fecha_inicio < hoy:
+            self.add_error('eve_fecha_inicio', 'La fecha de inicio no puede ser anterior a hoy.')
 
-            if fecha_fin and fecha_fin < hoy:
-                self.add_error('eve_fecha_fin', 'La fecha de finalización no puede ser anterior a hoy.')
+        if fecha_fin and fecha_fin < hoy:
+            self.add_error('eve_fecha_fin', 'La fecha de finalización no puede ser anterior a hoy.')
 
-            if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
-                self.add_error('eve_fecha_fin', 'La fecha de finalización no puede ser anterior a la fecha de inicio.')
+        if fecha_inicio and fecha_fin and fecha_fin < fecha_inicio:
+            self.add_error('eve_fecha_fin', 'La fecha de finalización no puede ser anterior a la fecha de inicio.')
 
-            return cleaned_data
+        return cleaned_data
 
 
 class EditarUsuarioAdministradorForm(forms.ModelForm):

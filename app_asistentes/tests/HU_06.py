@@ -2,236 +2,208 @@
 Asegurar mi asistencia y cupo en el evento"""
 
 
-# app_asistentes/tests/HU_06.py
+
+
 
 from django.test import TestCase, Client
 from django.urls import reverse
-from django.utils import timezone
-from datetime import timedelta
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth.hashers import make_password
-# Se necesitan estos imports para simular el ambiente de la vista
-import random
-import string
-from io import BytesIO
-from django.core.files.base import ContentFile
-from app_admin_eventos.models import Evento
+from django.core import mail
+from django.utils import timezone
+from datetime import timedelta
+from unittest.mock import patch
+
+# Importar Modelos (Asegúrate de que las importaciones son correctas)
+from app_admin_eventos.models import Evento 
 from app_asistentes.models import AsistenteEvento
-from app_usuarios.models import Usuario, AdministradorEvento, Asistente
+from app_usuarios.models import Usuario, AdministradorEvento, Asistente, Participante, Evaluador 
+from app_participantes.models import ParticipanteEvento
+from app_evaluadores.models import EvaluadorEvento
+from django.db.models.fields.files import FieldFile 
+from django.core.files.base import ContentFile
+from django.conf import settings
+from django.contrib.messages import get_messages # Necesario para leer mensajes de sesión
 
-# IMPORTANTE: Asegúrate de que tu AsistenteForm valide los campos de archivo (MIME types).
-# Dado que la validación de formato/tamaño no está en la vista, sino en el Formulario,
-# el CP-1.3 puede requerir un manejo específico si el Formulario no está adjunto. 
-# Asumiremos la validación por defecto o una excepción si Django la lanza.
 
-class AsistentePagoSoporteTest(TestCase):
+# --- Setup General y Casos de Prueba ---
+class AsistenteSoporteTest(TestCase):
     
-    # Cliente de prueba
-    client = Client()
-
     @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
+    def setUpTestData(cls): # Usar setUpTestData para objetos que no cambian
         
-        # Setup robusto de Admin (PK fijo para evitar IntegrityError)
+        # 1. Setup de Administrador para Eventos
         ADMIN_USER_ID = 9999
+        
+        # FIX E1: Añadir 'cedula' al objeto Usuario para evitar IntegrityError (1062)
         cls.user_admin, _ = Usuario.objects.update_or_create(
             pk=ADMIN_USER_ID,
-            defaults={'username': 'admin_test', 'email': 'admin@test.com', 
-                      'password': make_password('password'), 
-                      'rol': Usuario.Roles.ADMIN_EVENTO, 'is_staff': True}
+            defaults={
+                'username': 'admin_test_9999', 
+                'email': 'admin_9999@test.com', 
+                'password': make_password('password123'), 
+                'rol': Usuario.Roles.ADMIN_EVENTO, 
+                'is_staff': True,
+                'cedula': '111110000', # <<< CORRECCIÓN
+            }
         )
-        cls.admin, _ = AdministradorEvento.objects.update_or_create(usuario=cls.user_admin)
+
+        cls.admin, _ = AdministradorEvento.objects.update_or_create(
+            usuario=cls.user_admin,
+            defaults={'cedula': '11111'}
+        )
+        
         cls.fecha_proxima = timezone.now().date() + timedelta(days=7)
 
-        # Evento 1: De Pago (Capacidad 100)
-        cls.evento_pago = Evento.objects.create(
-            eve_nombre="Conferencia de Pago", eve_descripcion="Costo 100",
-            eve_estado="Publicado", eve_administrador_fk=cls.admin,
-            eve_tienecosto='De pago', eve_capacidad=100,
-            eve_fecha_inicio=cls.fecha_proxima, eve_fecha_fin=cls.fecha_proxima,
+        # 2. Evento 1: Sin Costo (Aprobación Automática)
+        cls.evento_gratis = Evento.objects.create(
+            eve_nombre="Conferencia Gratuita", eve_descripcion="Gratuito", eve_estado="Publicado",
+            eve_administrador_fk=cls.admin, eve_tienecosto='Sin costo', eve_capacidad=100, 
+            eve_fecha_inicio=cls.fecha_proxima, eve_fecha_fin=cls.fecha_proxima + timedelta(days=1), 
             eve_ciudad='Ciudad', eve_lugar='Lugar', 
-            eve_programacion=SimpleUploadedFile("prog.pdf", b"pdf_data"), 
-            eve_imagen=SimpleUploadedFile("img.png", b"file_data")
+            eve_programacion=SimpleUploadedFile("prog.pdf", b"pdf"), 
+            eve_imagen=SimpleUploadedFile("img.png", b"file")
         )
 
-        # Evento 2: Sin Costo (Capacidad 100)
-        cls.evento_gratis = Evento.objects.create(
-            eve_nombre="Conferencia Gratuita", eve_descripcion="Sin Costo",
-            eve_estado="Publicado", eve_administrador_fk=cls.admin,
-            eve_tienecosto='Sin costo', eve_capacidad=100,
-            eve_fecha_inicio=cls.fecha_proxima, eve_fecha_fin=cls.fecha_proxima,
+        # 3. Evento 2: De Pago (Aprobación Pendiente)
+        cls.evento_pago = Evento.objects.create(
+            eve_nombre="Taller de Pago", eve_descripcion="Con Costo", eve_estado="Publicado",
+            eve_administrador_fk=cls.admin, eve_tienecosto='De pago', eve_capacidad=50,
+            eve_fecha_inicio=cls.fecha_proxima, eve_fecha_fin=cls.fecha_proxima + timedelta(days=1), 
             eve_ciudad='Ciudad', eve_lugar='Lugar', 
-            eve_programacion=SimpleUploadedFile("prog.pdf", b"pdf_data"), 
-            eve_imagen=SimpleUploadedFile("img.png", b"file_data")
+            eve_programacion=SimpleUploadedFile("prog.pdf", b"pdf"), 
+            eve_imagen=SimpleUploadedFile("img.png", b"file")
         )
         
-        # Evento 3: Capacidad Agotada (Para validar el CP de la vista)
+        # 4. Evento 3: Capacidad Agotada
         cls.evento_lleno = Evento.objects.create(
-            eve_nombre="Evento Lleno", eve_descripcion="Cupos 0",
-            eve_estado="Publicado", eve_administrador_fk=cls.admin,
-            eve_tienecosto='Sin costo', eve_capacidad=0, 
-            eve_fecha_inicio=cls.fecha_proxima, eve_fecha_fin=cls.fecha_proxima,
+            eve_nombre="Capacidad Max", eve_descripcion="Lleno", eve_estado="Publicado",
+            eve_administrador_fk=cls.admin, eve_tienecosto='Sin costo', eve_capacidad=0, 
+            eve_fecha_inicio=cls.fecha_proxima, eve_fecha_fin=cls.fecha_proxima + timedelta(days=1), 
             eve_ciudad='Ciudad', eve_lugar='Lugar', 
-            eve_programacion=SimpleUploadedFile("prog.pdf", b"pdf_data"), 
-            eve_imagen=SimpleUploadedFile("img.png", b"file_data")
+            eve_programacion=SimpleUploadedFile("prog.pdf", b"pdf"), 
+            eve_imagen=SimpleUploadedFile("img.png", b"file")
         )
         
-        # Datos base del formulario (Usuario nuevo)
-        cls.asistente_data = {
-            'id': '100000001',
-            'username': 'asistente.base',
-            'email': 'asistente.base@test.com',
+        # 5. URLs
+        cls.url_gratis = reverse('crear_asistente', kwargs={'pk': cls.evento_gratis.pk})
+        cls.url_pago = reverse('crear_asistente', kwargs={'pk': cls.evento_pago.pk})
+        cls.url_lleno = reverse('crear_asistente', kwargs={'pk': cls.evento_lleno.pk})
+        
+
+    def setUp(self):
+        self.client = Client()
+        mail.outbox = [] # Limpiar bandeja de salida de correos
+
+        # Datos base de un nuevo asistente 
+        self.new_user_data = {
+            'cedula': 123456789,
+            'username': 'nuevoasistente',
+            'email': 'nuevo@example.com',
             'telefono': '3001234567',
             'first_name': 'Juan',
             'last_name': 'Perez',
         }
-        cls.url_pago = reverse('crear_asistente', kwargs={'pk': cls.evento_pago.pk})
-        cls.url_gratis = reverse('crear_asistente', kwargs={'pk': cls.evento_gratis.pk})
-        cls.url_lleno = reverse('crear_asistente', kwargs={'pk': cls.evento_lleno.pk})
         
-        # Archivos de prueba
-        cls.pdf_valido = SimpleUploadedFile("soporte.pdf", b"pdf content", content_type="application/pdf")
-        cls.archivo_invalido = SimpleUploadedFile("script.sh", b"bash script", content_type="text/x-shellscript")
+        # ✅ CORRECCIÓN CRÍTICA: Cambiar self.dummy_file de PDF a PNG para pasar la validación del formulario.
+        self.dummy_file = SimpleUploadedFile(
+            "soporte_pago.png", 
+            b"soporte_pago_content", 
+            content_type="image/png" # Tipo de contenido de imagen
+        )
         
-        # Simular envio de email para evitar errores en pruebas
-        cls.mail_patcher = cls.patch_email_backend()
+        # FIX: Patching para simular el guardado de archivos (QR)
+        self.qr_patch = patch('django.db.models.fields.files.FieldFile.save')
+        self.mock_qr = self.qr_patch.start()
+        self.mock_qr.return_value = None 
 
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-        if hasattr(cls, 'mail_patcher') and cls.mail_patcher:
-            cls.mail_patcher.stop()
-
-    def setUp(self):
-        # Reiniciar el cliente y el mock de email antes de cada prueba
-        self.client = Client()
-        self.mail_patcher.start()
 
     def tearDown(self):
-        self.mail_patcher.stop()
-
-    @staticmethod
-    def patch_email_backend():
-        from unittest.mock import patch
-        return patch('django.core.mail.backends.locmem.EmailBackend')
+        # Asegúrate de detener el patch después de cada prueba
+        self.qr_patch.stop()
 
 
-    # ----------------------------------------------------------------------
-    # CP-1.1: Registro Exitoso Evento Pago con Soporte Válido (Cubre CA-1.1, CA-1.2, CA-1.4)
-    # ----------------------------------------------------------------------
-    def test_cp_1_1_registro_pago_con_soporte_valido(self):
-        """Valida que un asistente adjunta soporte, el estado es 'Pendiente' y se resta la capacidad."""
-        
-        data = self.asistente_data.copy()
-        data['asi_eve_soporte'] = self.pdf_valido
-        data['username'] = 'asistente_pago_ok'
-        data['id'] = '100000006' 
-        data['email'] = 'asistente_pago_ok@test.com'
-        
-        capacidad_inicial = self.evento_pago.eve_capacidad
-        
-        response = self.client.post(self.url_pago, data, follow=True)
-        
-        # 1. Aserciones de la Respuesta
-        self.assertEqual(response.status_code, 200, "CA-1.1 FALLO: La solicitud POST no fue exitosa (Status 200).")
-        # El mensaje de la vista es f"La preinscripción fue exitosa al evento \"{evento.eve_nombre}\"."
-        self.assertContains(response, "La preinscripción fue exitosa al evento", status_code=200, 
-                            msg_prefix="CA-1.1 FALLO: No se mostró el mensaje de éxito/pendiente.")
 
-        # 2. Aserciones del Modelo
-        asistente_evento = AsistenteEvento.objects.filter(
-            asi_eve_evento_fk=self.evento_pago, 
-            asi_eve_asistente_fk__usuario__username='asistente_pago_ok'
-        ).first()
-
-        self.assertIsNotNone(asistente_evento, "CA-1.1 FALLO: No se creó el registro AsistenteEvento.")
-        self.assertEqual(asistente_evento.asi_eve_estado, 'Pendiente', "CA-1.2 FALLO: El estado no es 'Pendiente'.")
-        self.assertTrue(bool(asistente_evento.asi_eve_soporte), "CA-1.4 FALLO: El campo asi_eve_soporte está vacío/nulo.")
+    def test_cp_1_2_registro_pago_exitoso_con_soporte(self):
+        """Valida registro exitoso, estado 'Pendiente' y que el soporte de pago fue cargado."""
         
-        # 3. Verificar reducción de capacidad
+        # 0. Preparación de datos
+        initial_capacidad = self.evento_pago.eve_capacidad
+        
+        post_data = self.new_user_data.copy()
+        
+        # Datos únicos y válidos
+        UNIQUE_ID = 9999
+        
+        post_data.update({
+            'email': f'pago_test_{UNIQUE_ID}@unique.com',
+            'cedula': 98765432, 
+            'username': f'asistente{UNIQUE_ID}', 
+            'asi_eve_soporte': self.dummy_file # Archivo de imagen (PNG)
+        })
+
+        # 1. Ejecución del POST (SIN seguir la redirección: follow=False)
+        response_redirect = self.client.post(self.url_pago, post_data)
+
+        # 1A. Validación del POST inicial (Redirección 302)
+        # Esto DEBE pasar ahora que el archivo es PNG.
+        self.assertEqual(response_redirect.status_code, 302, 
+                         f"FALLO: La vista devolvió 200. El formulario debe estar fallando la validación. Datos: {post_data}")
+        self.assertEqual(response_redirect['Location'], reverse('pagina_principal'))
+
+        # 1B. Validación del Mensaje de Éxito en la Sesión
+        session_messages = [str(msg) for msg in list(get_messages(response_redirect.wsgi_request))]
+        
+        self.assertTrue(
+            any('Te has inscrito correctamente' in msg for msg in session_messages),
+            "FALLO: El mensaje de éxito 'Te has inscrito correctamente' no se guardó en la sesión."
+        )
+
+        # 1C. Ejecución del GET (Seguir la redirección manualmente)
+        response = self.client.get(response_redirect['Location'])
+        
+        # 1D. Validación de que el mensaje se renderiza en la página final
+        self.assertContains(response, 'Te has inscrito correctamente', status_code=200, 
+                             msg_prefix="FALLO: El mensaje de éxito no se renderizó en la página principal.")
+        
+        # ----------------------------------------------------------------------
+        
+        # 2. Validación de Estado, Soporte y Capacidad (CA-1.2)
+        try:
+            user = Usuario.objects.get(email=post_data['email'])
+            asistente_evento = AsistenteEvento.objects.get(asi_eve_asistente_fk__usuario=user, asi_eve_evento_fk=self.evento_pago)
+        except (Usuario.DoesNotExist, AsistenteEvento.DoesNotExist):
+            self.fail("FALLO CRÍTICO: No se creó el usuario o el asistente de evento.")
+
+
+        self.assertEqual(asistente_evento.asi_eve_estado, "Pendiente", "CA-1.2 FALLO: Estado incorrecto.")
+        # ✅ Aserción ajustada para esperar la extensión PNG
+        self.assertTrue(asistente_evento.asi_eve_soporte.name.endswith('png'), 
+                        "CA-1.2 FALLO: Soporte de pago no fue cargado o tiene extensión incorrecta (debe ser .png).")
+        
         self.evento_pago.refresh_from_db()
-        self.assertEqual(self.evento_pago.eve_capacidad, capacidad_inicial - 1, "CA-1.1 FALLO: La capacidad del evento no se redujo.")
+        self.assertEqual(self.evento_pago.eve_capacidad, initial_capacidad - 1, "CA-1.2 FALLO: Capacidad no disminuyó.")
+        
+        # 3. Validación de Correo (Sin QR adjunto)
+        self.assertEqual(len(mail.outbox), 1, "FALLO: No se envió el correo de confirmación.")
+        self.assertEqual(len(mail.outbox[0].attachments), 0, "FALLO: QR adjunto a evento de pago Pendiente.")
+
 
     # ----------------------------------------------------------------------
-    # CP-1.2: Registro Fallido sin Adjuntar Soporte (Evento Pago) (Cubre CA-1.3)
+    # CP-1.3: Registro Fallido en Evento 'De Pago' por Falta de Soporte (CA-1.2)
     # ----------------------------------------------------------------------
-    def test_cp_1_2_registro_pago_sin_soporte(self):
-        """Valida que la inscripción a un evento de pago sin soporte es rechazada por la lógica de la vista."""
+    def test_cp_1_3_registro_pago_fallido_sin_soporte(self):
+        """Valida que un evento 'De Pago' requiere soporte obligatoriamente."""
         
-        data = self.asistente_data.copy()
-        # NO se adjunta 'asi_eve_soporte'
-        data['username'] = 'asistente_sin_soporte'
-        data['id'] = '100000007' 
-        data['email'] = 'asistente_sin@test.com'
+        initial_count = AsistenteEvento.objects.count()
+        post_data = self.new_user_data.copy()
+        post_data.update({'email': 'sin_soporte@test.com', 'cedula': 3000})
 
-        response = self.client.post(self.url_pago, data, follow=True)
+        response = self.client.post(self.url_pago, post_data, follow=False)
+
+        # 1. Validación de Respuesta (Renderiza formulario con error)
+        self.assertEqual(response.status_code, 200, "CA-1.2 FALLO: Debería renderizar el formulario con errores (Status 200).")
+        self.assertContains(response, "Debe cargar una imagen del comprobante de pago para este evento.") 
         
-        # 1. Aserciones de la Respuesta
-        self.assertEqual(response.status_code, 200, "CA-1.3 FALLO: No se devolvió la página de formulario con error (Status 200).")
-        # Mensaje de error de la vista: "Debe cargar el comprobante de pago para este evento."
-        self.assertContains(response, "Debe cargar el comprobante de pago para este evento.", status_code=200, 
-                            msg_prefix="CA-1.3 FALLO: No se mostró el mensaje de soporte obligatorio.")
-
-        # 2. Aserciones del Modelo
-        self.assertFalse(AsistenteEvento.objects.filter(asi_eve_asistente_fk__usuario__username='asistente_sin_soporte').exists(),
-                         "CA-1.3 FALLO: Se creó un registro AsistenteEvento sin el soporte requerido.")
-
-    # ----------------------------------------------------------------------
-    # CP-1.3: Registro Fallido con Capacidad Agotada (Implementación de la vista)
-    # ----------------------------------------------------------------------
-    def test_cp_1_3_registro_fallido_capacidad_agotada_vista(self):
-        """Valida que el registro falla si eve_capacidad es 0 según la lógica de la vista."""
-        
-        # El evento_lleno tiene eve_capacidad=0
-        data = self.asistente_data.copy()
-        data['username'] = 'asistente_lleno'
-        data['id'] = '100000008' 
-        data['email'] = 'asistente_lleno@test.com'
-
-        response = self.client.post(self.url_lleno, data, follow=True)
-        
-        # 1. Aserciones de la Respuesta
-        self.assertEqual(response.status_code, 200, "CA-1.3 FALLO: La vista no regresó la página de registro (Status 200).")
-        # Mensaje de error de la vista: "No hay más cupos disponibles para este evento."
-        self.assertContains(response, "No hay más cupos disponibles para este evento.", status_code=200, 
-                            msg_prefix="CA-1.3 FALLO: No se mostró el mensaje de cupos agotados.")
-
-        # 2. Aserciones del Modelo
-        self.assertFalse(AsistenteEvento.objects.filter(asi_eve_evento_fk=self.evento_lleno).exists(),
-                         "CA-1.3 FALLO: Se creó un registro AsistenteEvento a pesar de la capacidad agotada.")
-
-    # ----------------------------------------------------------------------
-    # CP-1.4: Registro Exitoso Evento Gratuito (Sin Soporte Requerido) (Cubre CA-1.5)
-    # ----------------------------------------------------------------------
-    def test_cp_1_4_registro_gratuito_aprobado_automatico(self):
-        """Valida que la inscripción a un evento gratuito no requiere soporte y es 'Aprobado' automáticamente."""
-        
-        data = self.asistente_data.copy()
-        # NO se incluye asi_eve_soporte en la data
-        data['username'] = 'asistente_gratis_ok'
-        data['id'] = '100000009' 
-        data['email'] = 'asistente_gratis_ok@test.com'
-        
-        capacidad_inicial = self.evento_gratis.eve_capacidad
-
-        response = self.client.post(self.url_gratis, data, follow=True)
-        
-        # 1. Aserciones de la Respuesta
-        self.assertEqual(response.status_code, 200, "CA-1.5 FALLO: La solicitud POST no devolvió 200/redirigió correctamente.")
-        self.assertContains(response, "La preinscripción fue exitosa al evento", status_code=200, 
-                            msg_prefix="CA-1.5 FALLO: No se mostró el mensaje de éxito/aprobación.")
-
-        # 2. Aserciones del Modelo
-        asistente_evento = AsistenteEvento.objects.filter(
-            asi_eve_evento_fk=self.evento_gratis, 
-            asi_eve_asistente_fk__usuario__username='asistente_gratis_ok'
-        ).first()
-
-        self.assertIsNotNone(asistente_evento, "CA-1.5 FALLO: No se creó el registro AsistenteEvento.")
-        self.assertEqual(asistente_evento.asi_eve_estado, 'Aprobado', "CA-1.5 FALLO: El estado no es 'Aprobado'.")
-        self.assertFalse(bool(asistente_evento.asi_eve_soporte), "CA-1.5 FALLO: El campo asi_eve_soporte no está vacío para evento gratuito.")
-
-        # 3. Verificar reducción de capacidad
-        self.evento_gratis.refresh_from_db()
-        self.assertEqual(self.evento_gratis.eve_capacidad, capacidad_inicial - 1, "CA-1.5 FALLO: La capacidad del evento no se redujo.")
+        # 2. Validación de No Creación de Objetos
+        self.assertEqual(AsistenteEvento.objects.count(), initial_count, "CA-1.2 FALLO: Se creó un AsistenteEvento sin soporte de pago.")

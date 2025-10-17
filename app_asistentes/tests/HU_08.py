@@ -1,167 +1,197 @@
 """ Como Asistente quiero Recibir notificaciones sobre los eventos en los que estoy inscrito para 
 Estar al tanto de información relevante sobre el evento"""
 
-# app_asistentes/tests/HU_08.py
 
-from django.test import TestCase, Client, override_settings
+from django.test import TestCase, Client
 from django.urls import reverse
-from django.utils import timezone
-from datetime import timedelta
-from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.contrib.messages import get_messages
-from django.contrib.auth.hashers import make_password
-from unittest.mock import patch, PropertyMock 
-from django.contrib.sites.models import Site 
-from django.core.mail import EmailMessage 
+from django.core import mail
+from django.utils import timezone
+from datetime import date, timedelta # Necesario si usas TransactionTestCase y creas fechas dinámicas
 
-# Importaciones necesarias para su proyecto...
-from app_admin_eventos.models import Evento
-from app_asistentes.models import AsistenteEvento
 from app_usuarios.models import Usuario, AdministradorEvento, Asistente
+from app_asistentes.models import AsistenteEvento
+from app_admin_eventos.models import Evento
+from django.conf import settings
 
-@override_settings(SITE_ID=1)
+
+# CLAVE: Si la prueba sigue fallando por IntegrityError (clave duplicada),
+# cambia 'TestCase' por 'TransactionTestCase'.
 class EnviarNotificacionAsistentesTest(TestCase):
-
-    client = Client()
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        
-        # 📌 Parche 1: Site
-        cls.site_patcher = patch.object(Site.objects, 'get_current', return_value=Site(domain='testserver', name='test'))
-        cls.site_patcher.start()
-        
-        # 📌 Parche 2: Static (Adaptado a tu entorno)
-        try:
-            cls.static_patcher = patch('django.templatetags.static.static', return_value='/static/img/logo.png')
-            cls.static_patcher.start()
-        except:
-            # Si el path de la librería falla, se intenta el path local (ejemplo)
-            cls.static_patcher = patch('app_admin_eventos.views.static', return_value='/static/img/logo.png')
-            cls.static_patcher.start()
-        
-        # 📌 Parche 3: Mock del método send()
-        cls.email_patcher = patch.object(EmailMessage, 'send')
-        cls.mock_send = cls.email_patcher.start()
-        
-        # 1. Setup Admin y Evento base
-        cls.user_admin, _ = Usuario.objects.update_or_create(
-            username='admin_test', defaults={
-                'email': 'admin@test.com', 'password': make_password('password'), 
-                'rol': Usuario.Roles.ADMIN_EVENTO, 'is_staff': True
-            }
-        )
-        # 🟢 CORRECCIÓN DB: Asignar ID explícito al Administrador
-        cls.admin, _ = AdministradorEvento.objects.get_or_create(usuario=cls.user_admin, defaults={'id': 'A1'})
-        
-        cls.fecha_proxima = timezone.now().date() + timedelta(days=7)
-
-        # Creamos el evento con la imagen
-        cls.evento = Evento.objects.create(
-            eve_nombre="Notificacion Test", eve_descripcion="Prueba de Notificacion",
-            eve_estado="Publicado", eve_administrador_fk=cls.admin,
-            eve_tienecosto='Sin costo', eve_capacidad=100,
-            eve_fecha_inicio=cls.fecha_proxima, eve_fecha_fin=cls.fecha_proxima,
-            eve_imagen=SimpleUploadedFile("img.png", b"file_data")
-        )
-        
-        # 📌 Parche 4: MOCK DE PROPIEDAD 'url' 
-        cls.image_url_patcher = patch.object(
-            cls.evento.eve_imagen.__class__,
-            'url',
-            new_callable=PropertyMock,
-            return_value='/media/test_image.png'
-        )
-        cls.image_url_patcher.start() 
-
-        # 2. Setup Asistentes (Aprobado, Pendiente, Cancelado)
-        cls.user_aprobado = Usuario.objects.create_user(
-            username='asi_aprobado', email='aprobado@test.com', password='p', rol=Usuario.Roles.ASISTENTE
-        )
-        # 🟢 CORRECCIÓN DB: Asignar ID explícito
-        cls.asistente_aprobado = Asistente.objects.create(usuario=cls.user_aprobado, id='ASI1')
-        cls.reg_aprobado = AsistenteEvento.objects.create(
-            asi_eve_evento_fk=cls.evento, asi_eve_asistente_fk=cls.asistente_aprobado, 
-            asi_eve_estado='Aprobado', asi_eve_fecha_hora=timezone.now()
-        )
-        
-        cls.user_pendiente = Usuario.objects.create_user(
-            username='asi_pendiente', email='pendiente@test.com', password='p', rol=Usuario.Roles.ASISTENTE
-        )
-        # 🟢 CORRECCIÓN DB: Asignar ID explícito
-        cls.asistente_pendiente = Asistente.objects.create(usuario=cls.user_pendiente, id='ASI2')
-        cls.reg_pendiente = AsistenteEvento.objects.create(
-            asi_eve_evento_fk=cls.evento, asi_eve_asistente_fk=cls.asistente_pendiente, 
-            asi_eve_estado='Pendiente', asi_eve_fecha_hora=timezone.now()
-        )
-
-        cls.user_cancelado = Usuario.objects.create_user(
-            username='asi_cancelado', email='cancelado@test.com', password='p', rol=Usuario.Roles.ASISTENTE
-        )
-        # 🟢 CORRECCIÓN DB: Asignar ID explícito
-        cls.asistente_cancelado = Asistente.objects.create(usuario=cls.user_cancelado, id='ASI3')
-        cls.reg_cancelado = AsistenteEvento.objects.create(
-            asi_eve_evento_fk=cls.evento, asi_eve_asistente_fk=cls.asistente_cancelado, 
-            asi_eve_estado='Cancelado', asi_eve_fecha_hora=timezone.now()
-        )
-        
-        # 3. Setup Usuario no administrador (para CP-3.4)
-        cls.user_no_admin = Usuario.objects.create_user(
-            username='no_admin', email='noadmin@test.com', password='p', rol=Usuario.Roles.ASISTENTE
-        )
-        # NOTA: No creamos la instancia Asistente para user_no_admin a menos que sea estrictamente necesario.
-
-        cls.url = reverse('notificar_asi', kwargs={'evento_id': cls.evento.id})
-
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-        # Detenemos todos los parches.
-        cls.site_patcher.stop() 
-        cls.static_patcher.stop()
-        cls.email_patcher.stop()
-        cls.image_url_patcher.stop() 
-
+    
+    # Usaremos el setUp tradicional, asumiendo que TestCase funciona.
     def setUp(self):
-        # Reiniciar mock y outbox
-        self.mock_send.reset_mock()
-        mail.outbox = [] 
-        # Forzar login del administrador
-        self.client.force_login(self.user_admin)
-        # Simular GET inicial
-        self.client.get(self.url) 
-        
-    def _assert_message_found(self, response, expected_message_text, fail_message):
-        """Busca el mensaje flash en la respuesta."""
-        if not hasattr(response, 'wsgi_request'):
-             return self.fail("La respuesta no tiene wsgi_request. No se puede verificar el mensaje flash.")
-        
-        messages_list = list(get_messages(response.wsgi_request))
+        self.client = Client()
 
-        self.assertTrue(
-            any(expected_message_text in m.message for m in messages_list), 
-            fail_message
+        # === Crear usuario administrador ===
+        self.admin_user = Usuario.objects.create_user(
+            username='admin',
+            password='admin123',
+            email='admin@example.com',
+            rol='administrador_evento',
+            cedula='1001'
+        )
+        # Usar get_or_create podría ser problemático si el ID colisiona.
+        # Mejor usar create simple si la base de datos se limpia correctamente.
+        self.admin_perfil = AdministradorEvento.objects.create(usuario=self.admin_user)
+
+        # === Archivo simulado para el evento ===
+        archivo_falso = SimpleUploadedFile(
+            "programacion.pdf", b"Contenido de prueba", content_type="application/pdf"
         )
         
-    # ----------------------------------------------------------------------
-    # CP-3.4: Acceso Denegado (No Administrador)
-    # ----------------------------------------------------------------------
-    def test_cp_3_4_acceso_denegado_no_administrador(self):
-        """Valida que un usuario no administrador no puede acceder a la vista."""
+        # === Crear evento ===
+        fecha_futura = date.today() + timedelta(days=30)
+        self.evento = Evento.objects.create(
+            eve_nombre="Evento de prueba",
+            eve_descripcion="Un evento de prueba para tests",
+            eve_estado="Publicado",
+            eve_fecha_inicio=fecha_futura, # Usar fechas dinámicas para evitar problemas de eventos pasados
+            eve_fecha_fin=fecha_futura + timedelta(days=2),
+            eve_ciudad="Bogotá",
+            eve_tienecosto="Sin costo",
+            eve_capacidad=100,
+            eve_administrador_fk=self.admin_perfil,
+            eve_programacion=archivo_falso,
+            eve_imagen=None
+        )
+
+        # === Crear usuarios asistentes ===
+        self.usuario_aprobado = Usuario.objects.create_user(
+            username='asistente_aprobado',
+            password='test123',
+            email='aprobado@example.com',
+            rol='asistente',
+            cedula='2001'
+        )
+        self.usuario_pendiente = Usuario.objects.create_user(
+            username='asistente_pendiente',
+            password='test123',
+            email='pendiente@example.com',
+            rol='asistente',
+            cedula='2002'
+        )
+
+        # === Crear perfiles Asistente ===
+        self.asistente_aprobado = Asistente.objects.create(usuario=self.usuario_aprobado)
+        self.asistente_pendiente = Asistente.objects.create(usuario=self.usuario_pendiente)
+
+        # === Archivos simulados para los campos obligatorios ===
+        soporte_falso = SimpleUploadedFile("soporte.pdf", b"soporte", content_type="application/pdf")
+        qr_falso = SimpleUploadedFile("qr.png", b"qrcontent", content_type="image/png")
+
+        # === Crear inscripciones de asistentes ===
+        self.inscripcion_aprobada = AsistenteEvento.objects.create(
+            asi_eve_asistente_fk=self.asistente_aprobado,
+            asi_eve_evento_fk=self.evento,
+            asi_eve_fecha_hora=timezone.now(),
+            asi_eve_estado='Aprobado', # Los estados deben coincidir con la vista: "Aprobado", "Pendiente"
+            asi_eve_soporte=soporte_falso,
+            asi_eve_qr=qr_falso,
+            asi_eve_clave='clave123'
+        )
+        self.inscripcion_pendiente = AsistenteEvento.objects.create(
+            asi_eve_asistente_fk=self.asistente_pendiente,
+            asi_eve_evento_fk=self.evento,
+            asi_eve_fecha_hora=timezone.now(),
+            asi_eve_estado='Pendiente', # Los estados deben coincidir con la vista: "Aprobado", "Pendiente"
+            asi_eve_soporte=soporte_falso,
+            asi_eve_qr=qr_falso,
+            asi_eve_clave='clave456'
+        )
+
+        # === Login del administrador ===
+        self.client.login(username='admin', password='admin123')
+
+        # === URL de la vista ===
+        self.url = reverse('notificar_asi', args=[self.evento.id])
+
+    # === CASO 1 ===
+    def test_cp_as_not_001_envio_notificacion_a_aprobados(self):
+        """Verifica que el administrador pueda enviar notificaciones a asistentes aprobados."""
+        
+        # La vista espera una lista de IDs de 'asistentes' y el 'mensaje'
+        response = self.client.post(self.url, {
+            'asistentes': [self.inscripcion_aprobada.pk], # ID de la inscripción
+            'mensaje': 'Prueba de notificacion para aprobados'
+        })
+        
+        # CLAVE: Esperamos 302 (Redirección Post/Redirect/Get)
+        self.assertEqual(response.status_code, 302) 
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('aprobado@example.com', mail.outbox[0].to)
+        # La vista usa 'Notificación sobre el evento: Nombre del evento'
+        self.assertIn('Notificación sobre el evento', mail.outbox[0].subject)
+
+    # === CASO 2 ===
+    def test_cp_as_not_002_envio_notificacion_a_pendientes(self):
+        """Verifica que el administrador pueda enviar notificaciones a asistentes pendientes."""
+        
+        response = self.client.post(self.url, {
+            'asistentes': [self.inscripcion_pendiente.pk], # ID de la inscripción
+            'mensaje': 'Prueba de notificacion para pendientes'
+        })
+        
+        # CLAVE: Esperamos 302 (Redirección Post/Redirect/Get)
+        self.assertEqual(response.status_code, 302) 
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn('pendiente@example.com', mail.outbox[0].to)
+        self.assertIn('Notificación sobre el evento', mail.outbox[0].subject)
+
+    # === CASO 3 ===
+    def test_cp_as_not_003_restriccion_por_rol(self):
+        """Verifica que un usuario no administrador no pueda acceder a la vista."""
         
         self.client.logout()
-        self.client.force_login(self.user_no_admin) 
-
-        response_get = self.client.get(self.url)
+        # Creamos y logueamos al usuario no administrador
+        normal_user = Usuario.objects.create_user(
+            username='no_admin',
+            password='test123',
+            email='noadmin@example.com',
+            rol='asistente',
+            cedula='2003'
+        )
+        self.client.login(username='no_admin', password='test123')
         
-        self.assertEqual(response_get.status_code, 302, "CA-3.6 FALLO: Se esperaba redirección (302) por falta de privilegios.")
-        # Verificamos que redirija al login o a la raíz (si es el comportamiento por defecto de la restricción de rol)
-        self.assertTrue(response_get.url.startswith('/login/') or response_get.url == reverse('pagina_principal'), "CA-3.6 FALLO: Redirección incorrecta.")
+        # Intentamos acceder a la vista POST
+        response = self.client.post(self.url, {
+            'asistentes': [self.inscripcion_aprobada.pk], 
+            'mensaje': 'Mensaje'
+        })
+        
+        # CLAVE: El decorador admin_required probablemente redirige al login, lo que es 302.
+        # Si la vista devuelve 403, mantén 403. Pero un 302 a '/login?next=...' es lo más común.
+        # Ajustamos a 302 (redirección)
+        self.assertEqual(response.status_code, 302) 
+        self.assertIn(reverse('login_view'), response.url) 
+        self.assertEqual(len(mail.outbox), 0) # No se debe enviar correo
 
-    # ----------------------------------------------------------------------
-    # AÑADIR AQUÍ LOS TESTS DE ENVÍO DE NOTIFICACIÓN (CP-3.1, CP-3.2, CP-3.3)
-    # ----------------------------------------------------------------------
+    # === CASO EXTRA: Mensaje vacío (CP-3.2) ===
+    def test_cp_as_not_004_mensaje_vacio_falla(self):
+        """Verifica que falle si el mensaje está vacío."""
+        response = self.client.post(self.url, {
+            'asistentes': [self.inscripcion_aprobada.pk], 
+            'mensaje': '' # Mensaje vacío
+        })
+        
+        # La vista regresa un GET (200) y debe tener un mensaje de error
+        self.assertEqual(response.status_code, 200) 
+        self.assertContains(response, "El mensaje no puede estar vacío.")
+        self.assertEqual(len(mail.outbox), 0)
 
-    #Ejemplo de estructura para el envío (Asegúrate de que la URL 'notificar_asi' acepta POST)
+    # === CASO EXTRA: Sin seleccionados (CP-3.3) ===
+    def test_cp_as_not_005_sin_asistentes_seleccionados_falla(self):
+        """Verifica que falle si no se selecciona ningún asistente."""
+        response = self.client.post(self.url, {
+            'asistentes': [], # Lista vacía
+            'mensaje': 'Mensaje de prueba'
+        })
+        
+        # La vista regresa un GET (200) y debe tener un mensaje de advertencia
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "No seleccionaste ningún asistente.")
+        self.assertEqual(len(mail.outbox), 0)
+
+
+
+

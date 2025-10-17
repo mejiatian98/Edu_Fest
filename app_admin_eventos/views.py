@@ -1779,11 +1779,11 @@ class EnviarNotificacionAsistentesView(View):
 
         enviados = 0
         
-        # 📌 CORRECCIÓN CLAVE CP-3.1: Generación de URLs Absolutas (reinsertado)
-        # Esto evita el NameError y asegura que las URLs no rompan el cuerpo del correo.
+        # 📌 CORRECCIÓN CLAVE CP-3.1: Generación de URLs Absolutas
         
         # 1. URL del Logo (Static)
         logo_path = static('img/logo.png')
+        # build_absolute_uri asegura que la URL funcione fuera del contexto del sitio web
         logo_url = request.build_absolute_uri(logo_path) 
         
         # 2. URL de la Imagen del Evento (Media)
@@ -1800,7 +1800,7 @@ class EnviarNotificacionAsistentesView(View):
 
             subject = f"📢 Notificación sobre el evento: {evento.eve_nombre}"
             
-            # El cuerpo del correo ahora usa las variables corregidas
+            # El cuerpo del correo en formato HTML
             body = f"""
             <html>
             <body style="font-family: Arial, sans-serif; color: #333;">
@@ -1827,11 +1827,11 @@ class EnviarNotificacionAsistentesView(View):
                 email.send(fail_silently=False) 
                 enviados += 1
             except Exception as e:
-                # Si deseas ver el error real durante la depuración, usa 'raise e'.
-                # De lo contrario, déjalo con un 'print' (o 'logger') para evitar fallos de servidor.
+                # Usar un logger real en producción
                 print(f"⚠️ Error al enviar correo a {correo}: {e}") 
 
         messages.success(request, f"✅ Notificaciones enviadas a {enviados} asistentes.")
+        # Redirigir a la misma vista (patrón Post/Redirect/Get)
         return redirect('notificar_asi', evento_id=evento_id)
 
 
