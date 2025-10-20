@@ -1,11 +1,15 @@
-Diana carolina.
+#################### Chequeos Con Diana Carolina ####################
 
-rol como administrador de eventos
+-------------------------Rol como administrador de eventos-----------------------------
 
 Poner un mensaje de que debe crear el area primero antes de crear el app_admin_eventos ------- No necesario
 
 #Crear eventos
-Al crear el evento, poner en los campos algo que se vea que es requerido
-El formato de pdf no puede ser requerido ya que el administrador la puede ir editando ----------
+Al crear el evento, poner en los campos algo que se vea que es requerido ----------- Corregido
+El formato de pdf no puede ser requerido ya que el administrador la puede ir editando ---------- corregido
 poner primero la fecha fin y luego la de inicio y si quiero cambiar la fecha fin se debe cambiar la fecha inicio a la actual  --------Corregido
 Al cambiar la contraseña con primera vez, debe arroja un mensaje de que debes iniciar sesion de nuevo con tus nuevas credenciales -------- Corregido
+
+
+------------------------- Rol como Exponente -----------------------------
+

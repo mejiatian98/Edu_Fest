@@ -5,6 +5,7 @@ from app_admin_eventos.views import CertificadosView, cargar_personas
 
 urlpatterns = [
     path('', views.MenuPrincipalView.as_view(), name='dashboard_admin'),
+    path('publicar/<int:pk>/', views.PublicarEvento.as_view(), name='publicar_evento'),
     path('crear/', views.EventoCreateView.as_view(), name='crear_evento'),
     path('crear_categoria_area/', views.CreateCategoriaView.as_view(), name='crear_categoria_area'),
     path("lista_categorias/", views.ListaCategoriasView.as_view(), name="lista_categorias"),

@@ -77,7 +77,8 @@
             <div class="col-md-12 mb-4">
                 {{ form.area.label_tag }}
                 <select name="area" id="id_area" class="form-control">
-                    {% for area in form.fields.area.queryset %}
+                    <option value="">Seleccione el estado </option>
+                    {% for area in form.fields.area.queryset %}                    
                         <option 
                             value="{{ area.id }}" 
                             {% if form.instance.area and form.instance.area.id == area.id %}selected{% endif %}

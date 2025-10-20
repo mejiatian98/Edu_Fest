@@ -12,7 +12,7 @@ class ParticipanteForm(forms.ModelForm):
     cedula = forms.CharField(
         label="Cédula",
         max_length=20,
-        widget=forms.TextInput(attrs={
+        widget=forms.NumberInput(attrs={
             'class': 'form-control',
             'placeholder': 'Ingresa tu número de cédula',
             'required': True
@@ -40,7 +40,7 @@ class ParticipanteForm(forms.ModelForm):
     telefono = forms.CharField(
         label="Teléfono",
         max_length=15,
-        widget=forms.TextInput(attrs={
+        widget=forms.NumberInput(attrs={
             'class': 'form-control',
             'placeholder': 'Número de teléfono',
             'required': True
@@ -134,7 +134,7 @@ class EditarUsuarioParticipanteForm(forms.ModelForm):
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'telefono': forms.TextInput(attrs={'class': 'form-control'}),
+            'telefono': forms.NumberInput(attrs={'class': 'form-control'}),
         }
 
 
@@ -151,7 +151,7 @@ class MiembroParticipanteForm(forms.Form): # Usar forms.Form o forms.ModelForm d
     
     cedula = forms.CharField(
         label="Cédula", max_length=20,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ingresa tu número de cédula', 'required': True})
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Ingresa tu número de cédula', 'required': True})
     )
 
     username = forms.CharField(
@@ -166,7 +166,7 @@ class MiembroParticipanteForm(forms.Form): # Usar forms.Form o forms.ModelForm d
 
     telefono = forms.CharField(
         label="Teléfono", max_length=15,
-        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono', 'required': True})
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'Número de teléfono', 'required': True})
     )
 
     first_name = forms.CharField(

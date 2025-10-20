@@ -7,6 +7,7 @@ from django.views import View
 from django.views.generic import CreateView, ListView, UpdateView, DeleteView, DetailView
 from django.urls import reverse, reverse_lazy
 import qrcode
+from requests import request
 from .models import Criterio, Evento, EventoCategoria, Area, Categoria
 from app_usuarios.models import AdministradorEvento , Usuario
 from app_participantes.models import ParticipanteEvento 
@@ -14,6 +15,7 @@ from app_asistentes.models import  AsistenteEvento
 from app_evaluadores.models import EvaluadorEvento, Calificacion
 from app_admin_eventos.forms import EventoForm, EditarUsuarioAdministradorForm, CategoriaForm
 from django.views.generic.edit import FormView
+from django.views.decorators.http import require_POST
 
 
 from app_usuarios.models import Participante, Asistente, Evaluador
@@ -129,6 +131,18 @@ class MenuPrincipalView(ListView):
 
         return super().dispatch(request, *args, **kwargs)
 
+
+@method_decorator(admin_required, name='dispatch')
+class PublicarEvento(View):
+    def post(self, request, pk):
+        evento = get_object_or_404(Evento, pk=pk)
+
+    # Cambiar estado a Publicado
+        evento.eve_estado = "Publicado"
+        evento.save()
+
+        messages.success(request, f"✅ El evento '{evento.eve_nombre}' ha sido publicado correctamente.")
+        return redirect('dashboard_admin')
 
 
 ##################### --- Cambio de Contraseña Administrador --- #####################

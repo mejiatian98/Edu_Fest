@@ -136,6 +136,17 @@
                                     {% endif %}">
                                     <h2>{{ evento.eve_estado }}</h2>
                                 </div>
+
+                                {% if evento.eve_estado == "Editando" %}
+                                    <div class="text-center mt-3">
+                                        <form action="{% url 'publicar_evento' evento.pk %}" method="post" style="display:inline;">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-success btn-sm">
+                                                📢 Publicar ahora mismo
+                                            </button>
+                                        </form>
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
                     </div>
@@ -435,11 +446,8 @@
 <!-- ########################################################################################################## -->
 
     <script src="{% static 'js/obtener_tiempo.js' %}"></script>
- 
-
     <script src="{% static 'js/alerta_time_desaparece.js' %}"></script>
     <script src="{% static 'js/efecto_imagen.js' %}"></script>
-    <script src="{% static 'js/cancelacion.js' %}"></script>
     <script src="{% static 'js/marcar_campos_vacios.js' %}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.6/dist/js/bootstrap.bundle.min.js" integrity="sha384-j1CDi7MgGQ12Z7Qab0qlWQ/Qqz24Gc6BM0thvEMVjHnfYGF0rmFCozFSxQBxwHKO" crossorigin="anonymous"></script>
 

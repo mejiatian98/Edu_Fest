@@ -1,28 +1,19 @@
-// static/js/marcar_campos_vacios.js
+// static/js/marcar_campos_vacios_par.js
 
 document.addEventListener("DOMContentLoaded", function () {
-    // Seleccionamos todos los campos del formulario
+    // Seleccionamos todos los inputs, selects y textareas del formulario del participante
     const campos = document.querySelectorAll("form input, form select, form textarea");
 
     campos.forEach(campo => {
-        // ❌ Excepciones: estos campos NO deben ser requeridos
         const idCampo = campo.getAttribute("id");
-        if (idCampo === "cat_descripcion") {
-            return; // se salta estos dos
-        }
 
-        // 🧩 NUEVO: Si es imagen o pdf y ya hay archivo cargado, no marcar como requerido
-        if (idCampo === "id_eve_imagen" || idCampo === "id_eve_programacion") {
-            const existingFile = campo.closest("div")?.querySelector("a"); // Django muestra el archivo como <a href="...">
-            if (existingFile) {
-                return; // salta este campo, no lo marca como requerido
-            }
-        }
+        // No aplicar a campos ocultos ni a botones
+        if (!idCampo || campo.type === "hidden" || campo.type === "submit") return;
 
-        // ✅ Aseguramos que todos los demás sean requeridos
+        // ✅ Marcar todos como requeridos (ya los tienes en el form, pero reforzamos)
         campo.setAttribute("required", "required");
 
-        // Buscar la etiqueta label asociada al campo
+        // Buscar el label asociado al campo
         const label = campo.closest(".mb-3, .col-md-4, .col-md-6, .col-md-12")?.querySelector("label");
         if (!label) return;
 
@@ -30,7 +21,7 @@ document.addEventListener("DOMContentLoaded", function () {
         let asterisco = document.createElement("span");
         asterisco.textContent = " *";
         asterisco.style.color = "red";
-        asterisco.style.display = "none"; // Oculto por defecto
+        asterisco.style.display = "none"; // Oculto al inicio
         asterisco.classList.add("campo-obligatorio");
         label.appendChild(asterisco);
 
@@ -46,36 +37,24 @@ document.addEventListener("DOMContentLoaded", function () {
             }
         }
 
-        // Detecta cambios en tiempo real
+        // Detectar cambios
         campo.addEventListener("input", actualizarAsterisco);
         campo.addEventListener("change", actualizarAsterisco);
 
-        // Revisar al inicio
+        // Revisar al cargar
         actualizarAsterisco();
     });
 
-    // 🚨 Validación al enviar: muestra los asteriscos en vacíos
+    // 🚨 Validación general al enviar el formulario
     const form = document.querySelector("form");
     if (form) {
         form.addEventListener("submit", function (e) {
             let hayErrores = false;
+
             campos.forEach(campo => {
                 const idCampo = campo.getAttribute("id");
-                if (idCampo === "cat_descripcion") {
-                    return;
-                }
-                // ⚠️ Saltar formularios pequeños como el de “Publicar ahora mismo”
-                if (form.querySelector("button.btn-success.btn-sm")) {
-                    return; // no aplicar validación a ese form
-                }
 
-                // 🧩 NUEVO: Saltar imagen/pdf si ya hay archivo
-                if (idCampo === "id_eve_imagen" || idCampo === "id_eve_programacion") {
-                    const existingFile = campo.closest("div")?.querySelector("a");
-                    if (existingFile) {
-                        return;
-                    }
-                }
+                if (!idCampo || campo.type === "hidden" || campo.type === "submit") return;
 
                 if (campo.value.trim() === "") {
                     campo.style.borderColor = "red";

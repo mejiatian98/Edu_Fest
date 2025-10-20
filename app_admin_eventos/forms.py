@@ -1,7 +1,8 @@
-from datetime import timezone
+from django.utils import timezone
 from django import forms
 from .models import Evento, Categoria, Area
 from app_usuarios.models import Usuario
+
 
 
 
@@ -71,6 +72,8 @@ class EventoForm(forms.ModelForm):
             'eve_capacidad': forms.NumberInput(attrs={'class': 'form-control'}),
             'eve_tienecosto': forms.Select(attrs={'class': 'form-control'}),
         }
+
+        
 
 
     def clean(self):
