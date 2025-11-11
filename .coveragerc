@@ -1,5 +1,5 @@
 [run]
-source = mi_app
+source = app_admin_eventos
 omit =
     */migrations/*
     */tests/*

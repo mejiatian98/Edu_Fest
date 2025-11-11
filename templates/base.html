@@ -12,93 +12,91 @@
 </head>
 <body>
     <header>
-        <div class="container">
-            <nav class="navbar navbar-expand-lg">
-                <!-- Logo y nombre -->
-                <a class="navbar-brand d-flex align-items-center text-white fw-bold" href="/" style="font-size: 1.7rem;">
-                    <img src="{% static 'img/favicon.png' %}" alt="favicon" class="img-fluid me-2" style="width: 50px; height: 50px;">
-                    Event-Soft
-                </a>
+        <nav class="navbar navbar-expand-lg">
+            <!-- Logo y nombre -->
+            <a class="navbar-brand d-flex align-items-center text-white fw-bold" href="/" style="font-size: 1.7rem;">
+                <img src="{% static 'img/favicon.png' %}" alt="favicon" class="img-fluid me-2" style="width: 50px; height: 50px;">
+                Event-Soft
+            </a>
 
-                <!-- Botón responsive -->
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
-                    aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
-                </button>
+            <!-- Botón responsive -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent"
+                aria-controls="navbarContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-                <!-- Contenido de la barra -->
-                <div class="collapse navbar-collapse" id="navbarContent">
-                    <!-- Buscador centrado -->
-                    <form id="buscador-navbar" class="d-flex mx-auto my-2" role="search" style="max-width: 500px; width: 100%;">
-                        <input id="input-busqueda-navbar" class="form-control me-2" type="search" name="nombre"
-                            placeholder="Buscar..." aria-label="Search">
-                    </form>
+            <!-- Contenido de la barra -->
+            <div class="collapse navbar-collapse" id="navbarContent">
+                <!-- Buscador centrado -->
+                <form id="buscador-navbar" class="d-flex mx-auto my-2" role="search" style="max-width: 80px; width: 100%;">
+                    <input id="input-busqueda-navbar" class="form-control me-2" type="search" name="nombre"
+                        placeholder="Buscar..." aria-label="Search">
+                </form>
 
-                    <!-- Menú derecho -->
-                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0 d-flex align-items-center gap-2">
-                        <!-- Mostrar nombre y botón de cerrar sesión según el rol en sesión -->
-                        {% if request.session.admin_id %}
-                            <li class="nav-item">
-                                <a href="{% url 'dashboard_admin' %}">
-                                <span class="nav-link text-white fw-bold">🟢 Administrador {{ request.session.admin_nombre }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
-                                    <i class="bi bi-box-arrow-right"></i> Cerrar sesión
-                                </a>
-                            </li>
-                        {% elif request.session.evaluador_id %}
-                            <li class="nav-item">
-                                <a href="{% url 'dashboard_evaluador' %}">
-                                <span class="nav-link text-white fw-bold">🟢 Evaluador {{ request.session.evaluador_nombre }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
-                                    <i class="bi bi-box-arrow-right"></i> Cerrar sesión
-                                </a>
-                            </li>
-                        {% elif request.session.participante_id %}
-                            <li class="nav-item">
-                                <a href="{% url 'dashboard_participante' %}">
-                                <span class="nav-link text-white fw-bold">🟢 Participante {{ request.session.participante_nombre }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
-                                    <i class="bi bi-box-arrow-right"></i> Cerrar sesión
-                                </a>
-                            </li>
-                        {% elif request.session.asistente_id %}
-                            <li class="nav-item">
-                                <a href="{% url 'dashboard_asistente' %}">
-                                <span class="nav-link text-white fw-bold">🟢 Asistente {{ request.session.asistente_nombre }}</span>
-                                </a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
-                                    <i class="bi bi-box-arrow-right"></i> Cerrar sesión
-                                </a>
-                            </li>
-                        {% else %}
-                            <!-- Si nadie ha iniciado sesión, mostrar botón de iniciar -->
-                            <li class="nav-item">
-                                <a class="nav-link text-white fw-semibold" href="{% url 'login_view' %}">
-                                    <i class="bi bi-person-circle"></i> Iniciar sesión
-                                </a>
-                            </li>
-                        {% endif %}
-                    </ul>
-                </div>
-            </nav>
-        </div>
+                <!-- Menú derecho -->
+                <ul class="navbar-nav ms-auto mb-2 mb-lg-0 d-flex align-items-center gap-2">
+                    <!-- Mostrar nombre y botón de cerrar sesión según el rol en sesión -->
+                    {% if request.session.admin_id %}
+                        <li class="nav-item">
+                            <a href="{% url 'dashboard_admin' %}">
+                            <span class="nav-link text-white fw-bold">🟢 Administrador {{ request.session.admin_nombre }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
+                                <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                            </a>
+                        </li>
+                    {% elif request.session.evaluador_id %}
+                        <li class="nav-item">
+                            <a href="{% url 'dashboard_evaluador' %}">
+                            <span class="nav-link text-white fw-bold">🟢 Evaluador {{ request.session.evaluador_nombre }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
+                                <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                            </a>
+                        </li>
+                    {% elif request.session.participante_id %}
+                        <li class="nav-item">
+                            <a href="{% url 'dashboard_participante' %}">
+                            <span class="nav-link text-white fw-bold">🟢 Participante {{ request.session.participante_nombre }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
+                                <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                            </a>
+                        </li>
+                    {% elif request.session.asistente_id %}
+                        <li class="nav-item">
+                            <a href="{% url 'dashboard_asistente' %}">
+                            <span class="nav-link text-white fw-bold">🟢 Asistente {{ request.session.asistente_nombre }}</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link text-white fw-semibold" href="{% url 'logout_view' %}">
+                                <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+                            </a>
+                        </li>
+                    {% else %}
+                        <!-- Si nadie ha iniciado sesión, mostrar botón de iniciar -->
+                        <li class="nav-item">
+                            <a class="nav-link text-white fw-semibold" href="{% url 'login_view' %}">
+                                <i class="bi bi-person-circle"></i> Iniciar sesión
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </nav>
     </header>
  
 
 <!-- ########################################################################################################## -->
 
-
+<div class="container">
 <main class="mb-5">
 
     {% if messages %}
