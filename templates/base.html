@@ -28,7 +28,7 @@
             <!-- Contenido de la barra -->
             <div class="collapse navbar-collapse" id="navbarContent">
                 <!-- Buscador centrado -->
-                <form id="buscador-navbar" class="d-flex mx-auto my-2" role="search" style="max-width: 80px; width: 100%;">
+                <form id="buscador-navbar" class="d-flex mx-auto my-2" role="search" style="max-width: 50%; width: 100%;">
                     <input id="input-busqueda-navbar" class="form-control me-2" type="search" name="nombre"
                         placeholder="Buscar..." aria-label="Search">
                 </form>
@@ -96,163 +96,165 @@
 
 <!-- ########################################################################################################## -->
 
-<div class="container">
+
 <main class="mb-5">
+    <div class="container">
 
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-success text-center alert-fixed-top" role="alert">{{ message }}</div>
-        {% endfor %}
-    {% endif %}
-    
-    {% block content %}
-
-
-        <!-- Contenedor blanco (nivel 1) -->
-    <section class="contenedor-mv">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-success text-center alert-fixed-top" role="alert">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
         
-        <!-- Contenedor gris claro (nivel 2) -->
-        <div class="contenedor-gris caja-info">
+        {% block content %}
+
+
+            <!-- Contenedor blanco (nivel 1) -->
+        <section class="contenedor-mv">
             
-            <!-- Logo -->
-            <div class="caja-logo mx-5">
-                <img src="{% static 'img/logo.png' %}" alt="Logo">
+            <!-- Contenedor gris claro (nivel 2) -->
+            <div class="contenedor-gris caja-info">
+                
+                <!-- Logo -->
+                <div class="caja-logo mx-5">
+                    <img src="{% static 'img/logo.png' %}" alt="Logo">
+                </div>
+
+                <!-- Texto en recuadro verde (nivel 3) -->
+                
+                <h5 class="caja-mv">Plataforma digital enfocada en promover eventos educativos, culturales y académicos,
+                    facilitando la inscripción, participación y evaluación en un entorno accesible y profesional.</h5>
             </div>
-
-            <!-- Texto en recuadro verde (nivel 3) -->
-            
-            <h5 class="caja-mv">Plataforma digital enfocada en promover eventos educativos, culturales y académicos,
-                facilitando la inscripción, participación y evaluación en un entorno accesible y profesional.</h5>
-        </div>
-    </section>
+        </section>
+        
     
- 
-
-   <section class="contenedor-mv caja-info">
-    <!-- Misión -->
-        <div class="caja-mv">
-            <h4>Misión</h4>
-            <p>
-                Brindar una plataforma digital innovadora que facilite la gestión integral de eventos educativos, 
-                culturales y académicos, promoviendo la participación activa, el aprendizaje continuo y el acceso 
-                inclusivo a experiencias que fortalezcan el desarrollo personal y profesional de los participantes.
-            </p>
-        </div>
-
-        <!-- Visión -->
-        <div class="caja-mv ">
-            <h4>Visión</h4>
-            <p>
-                Ser la plataforma líder en Latinoamérica en la organización y gestión de eventos educativos, 
-                culturales y académicos, reconocida por su accesibilidad, confiabilidad y capacidad de transformar 
-                la manera en que las personas se conectan, aprenden y comparten conocimiento en un entorno digital.
-            </p>
-        </div>
-    </section>
 
     <section class="contenedor-mv caja-info">
-        <div class="text-center  caja-mv p-4 ">
-            <p>Acá puedes encontrar el manual de uso de la plataforma</p>
-            <a href="{% static 'manuales/asistentes.pdf' %}" target="_blank" 
-                class="btn btn-sm btn-success document-btn">
-                <i class="fas fa-file-pdf"></i> Manual de uso
-            </a>
-        </div>
-    </section>
-    <hr class="container my-3">
-
-        <nav>
-            <div class="container">
-                <form method="get" class="mb-4 rounded shadow-sm pt-4" >
-                    <h2 class="text-center caja-mv mb-4 ">Buscar evento</h2>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <input type="text" name="nombre" class="form-control" placeholder="Nombre del evento" value="{{ request.GET.nombre }}">
-                        </div>
-                        <div class="col-md-6">
-                            <input type="text" name="ciudad" class="form-control" placeholder="Ciudad" value="{{ request.GET.ciudad }}">
-                        </div>
-                        <br>
-                        <br>
-                        <br>
-                        <div class="col-md-3">
-                            <select name="area" id="id_area" class="form-select">
-                                <option value="">Área</option>
-                                {% for area in areas %}
-                                <option value="{{ area.id }}" {% if request.GET.area == area.id|stringformat:"s" %}selected{% endif %}>{{ area.are_nombre }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <select name="categoria" id="id_categoria" class="form-select">
-                                <option value="">Categoría</option>
-                                {% for cat in categorias %}
-                                <option value="{{ cat.id }}" data-area="{{ cat.cat_area_fk.id }}" {% if request.GET.categoria == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.cat_nombre }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <select name="costo" class="form-select">
-                                <option value="">¿Tiene costo?</option>
-                                <option value="De pago" {% if request.GET.costo == "De pago" %}selected{% endif %}>Con costo</option>
-                                <option value="Es gratis" {% if request.GET.costo == "Es gratis" %}selected{% endif %}>Gratuito</option>
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <select name="estado" class="form-select">
-                                <option value="">Estado</option>
-                                <option value="Publicado" {% if request.GET.estado == "Publicado" %}selected{% endif %}>Publicado</option>
-                                <option value="Finalizado" {% if request.GET.estado == "Finalizado" %}selected{% endif %}>Finalizado</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="mt-3  text-center">
-                        <button type="submit" class="btn btn-success">Filtrar</button>
-                        <a href="{% url 'pagina_principal' %}" class="btn btn-secondary">Limpiar</a>
-                    </div>
-                </form>
+        <!-- Misión -->
+            <div class="caja-mv">
+                <h4>Misión</h4>
+                <p>
+                    Brindar una plataforma digital innovadora que facilite la gestión integral de eventos educativos, 
+                    culturales y académicos, promoviendo la participación activa, el aprendizaje continuo y el acceso 
+                    inclusivo a experiencias que fortalezcan el desarrollo personal y profesional de los participantes.
+                </p>
             </div>
-        </nav>
 
-        <div class="contenedor-principal">
-            {% for evento in eventos %}
-            <div class="card cursor-pointer"
-                data-url="{% url 'ver_info_evento' evento.id %}"
-                onclick="location.href = this.getAttribute('data-url');">
-
-                <img src="{{ evento.eve_imagen.url }}" alt="{{ evento.eve_nombre }}">
-                
-                <div class="card-body">
-                    <h5>{{ evento.eve_nombre }}</h5>
-                </div>
-
-                {% if evento.eve_estado == 'Finalizado' %}
-                <div>
-                    <h4 class="text-danger alert-danger text-center m-2   rounded">Finalizado</h4>
-                </div>
-                {% endif %}
-
-                <div class="card-footer align-items-center">
-                    <div class="fecha">
-                        <div class="dia">{{ evento.eve_fecha_inicio|date:"D" }}</div>
-                        <div class="numero">{{ evento.eve_fecha_inicio|date:"d" }}</div>
-                        <div class="mes">{{ evento.eve_fecha_inicio|date:"M Y" }}</div>
-                    </div>
-                    <div class="info d-flex flex-column mb-2">
-                        <p><strong>{{ evento.eve_ciudad }}</strong></p>
-                        <p><strong>{{ evento.eve_lugar }}</strong></p>
-                    </div>
-                </div>
+            <!-- Visión -->
+            <div class="caja-mv ">
+                <h4>Visión</h4>
+                <p>
+                    Ser la plataforma líder en Latinoamérica en la organización y gestión de eventos educativos, 
+                    culturales y académicos, reconocida por su accesibilidad, confiabilidad y capacidad de transformar 
+                    la manera en que las personas se conectan, aprenden y comparten conocimiento en un entorno digital.
+                </p>
             </div>
-            {% endfor %}
+        </section>
+
+        <section class="contenedor-mv caja-info">
+            <div class="text-center  caja-mv p-4 ">
+                <p>Acá puedes encontrar el manual de uso de la plataforma</p>
+                <a href="{% static 'manuales/asistentes.pdf' %}" target="_blank" 
+                    class="btn btn-sm btn-success document-btn">
+                    <i class="fas fa-file-pdf"></i> Manual de uso
+                </a>
+            </div>
+        </section>
+        <hr class="container my-3">
+
+            <nav>
+                <div class="container">
+                    <form method="get" class="mb-4 rounded shadow-sm pt-4" >
+                        <h2 class="text-center caja-mv mb-4 ">Buscar evento</h2>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="text" name="nombre" class="form-control" placeholder="Nombre del evento" value="{{ request.GET.nombre }}">
+                            </div>
+                            <div class="col-md-6">
+                                <input type="text" name="ciudad" class="form-control" placeholder="Ciudad" value="{{ request.GET.ciudad }}">
+                            </div>
+                            <br>
+                            <br>
+                            <br>
+                            <div class="col-md-3">
+                                <select name="area" id="id_area" class="form-select">
+                                    <option value="">Área</option>
+                                    {% for area in areas %}
+                                    <option value="{{ area.id }}" {% if request.GET.area == area.id|stringformat:"s" %}selected{% endif %}>{{ area.are_nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select name="categoria" id="id_categoria" class="form-select">
+                                    <option value="">Categoría</option>
+                                    {% for cat in categorias %}
+                                    <option value="{{ cat.id }}" data-area="{{ cat.cat_area_fk.id }}" {% if request.GET.categoria == cat.id|stringformat:"s" %}selected{% endif %}>{{ cat.cat_nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select name="costo" class="form-select">
+                                    <option value="">¿Tiene costo?</option>
+                                    <option value="De pago" {% if request.GET.costo == "De pago" %}selected{% endif %}>Con costo</option>
+                                    <option value="Es gratis" {% if request.GET.costo == "Es gratis" %}selected{% endif %}>Gratuito</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <select name="estado" class="form-select">
+                                    <option value="">Estado</option>
+                                    <option value="Publicado" {% if request.GET.estado == "Publicado" %}selected{% endif %}>Publicado</option>
+                                    <option value="Finalizado" {% if request.GET.estado == "Finalizado" %}selected{% endif %}>Finalizado</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-3  text-center">
+                            <button type="submit" class="btn btn-success">Filtrar</button>
+                            <a href="{% url 'pagina_principal' %}" class="btn btn-secondary">Limpiar</a>
+                        </div>
+                    </form>
+                </div>
+            </nav>
+
+            <div class="contenedor-principal">
+                {% for evento in eventos %}
+                <div class="card cursor-pointer"
+                    data-url="{% url 'ver_info_evento' evento.id %}"
+                    onclick="location.href = this.getAttribute('data-url');">
+
+                    <img src="{{ evento.eve_imagen.url }}" alt="{{ evento.eve_nombre }}">
+                    
+                    <div class="card-body">
+                        <h5>{{ evento.eve_nombre }}</h5>
+                    </div>
+
+                    {% if evento.eve_estado == 'Finalizado' %}
+                    <div>
+                        <h4 class="text-danger alert-danger text-center m-2   rounded">Finalizado</h4>
+                    </div>
+                    {% endif %}
+
+                    <div class="card-footer align-items-center">
+                        <div class="fecha">
+                            <div class="dia">{{ evento.eve_fecha_inicio|date:"D" }}</div>
+                            <div class="numero">{{ evento.eve_fecha_inicio|date:"d" }}</div>
+                            <div class="mes">{{ evento.eve_fecha_inicio|date:"M Y" }}</div>
+                        </div>
+                        <div class="info d-flex flex-column mb-2">
+                            <p><strong>{{ evento.eve_ciudad }}</strong></p>
+                            <p><strong>{{ evento.eve_lugar }}</strong></p>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            
+        {% endblock %}
+
+        <!-- Modal de soporte -->
+        <div>
+            {% include 'modal_soporte.html' %}
         </div>
-
-        
-    {% endblock %}
-
-    <!-- Modal de soporte -->
-    <div>
-        {% include 'modal_soporte.html' %}
     </div>
 </main>
 
@@ -269,28 +271,24 @@
 
 <!-- ########################################################################################################## -->
 
-    <footer class="footer-corporativo text-white py-4">
-        <div class="container">
-            
-            <!-- Fila superior con enlaces -->
-            <div class="row justify-content-between text-center text-md-start mb-3">
-                <div class="col-md-12 d-flex flex-wrap justify-content-center  gap-3">
-                    <a href="#" class="footer-link">Contáctanos</a>
-                    <a href="#" class="footer-link">Preguntas frecuentes</a>
-                    <a href="#" class="footer-link">Aviso de privacidad</a>
-                    <a href="#" class="footer-link">Aviso de cookies</a>
-                    <a href="#" class="footer-link">Aviso Legal</a>
-                    <a href="#" class="footer-link">
-                        <img src="{% static 'img/flag_Colombia.png' %}" alt="País" width="20" class="me-1"> País (COL)
-                    </a>
-                </div>
+    <footer class="footer-corporativo text-white py-4">            
+        <!-- Fila superior con enlaces -->
+        <div class="row justify-content-between text-center text-md-start mb-3">
+            <div class="col-md-12 d-flex flex-wrap justify-content-center  gap-3">
+                <a href="#" class="footer-link">Contáctanos</a>
+                <a href="#" class="footer-link">Preguntas frecuentes</a>
+                <a href="#" class="footer-link">Aviso de privacidad</a>
+                <a href="#" class="footer-link">Aviso de cookies</a>
+                <a href="#" class="footer-link">Aviso Legal</a>
+                <a href="#" class="footer-link">
+                    <img src="{% static 'img/flag_Colombia.png' %}" alt="País" width="20" class="me-1"> País (COL)
+                </a>
             </div>
-            <hr class="bg-white my-5">
-            <!-- Texto legal -->
-            <div class="text-center">
-                <small>&copy; <span id="year"></span> Event-Soft. Todos los derechos reservados.</small>
-            </div>
-
+        </div>
+        <hr class="bg-white my-5">
+        <!-- Texto legal -->
+        <div class="text-center">
+            <small>&copy; <span id="year"></span> Event-Soft. Todos los derechos reservados.</small>
         </div>
     </footer>
 
