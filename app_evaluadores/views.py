@@ -1007,7 +1007,7 @@ class IngresoEventoEvaluadorView(View):
 ########## VER CRITERIOS DE EVALUACIÓN PARA PARTICIPANTES #########
 @method_decorator(evaluador_required, name='dispatch')
 class VerCriteriosEvaluadorView(View):
-    template_name = 'ver_criterios_eva.html'
+    template_name = 'ver_criterios_evaluador_eva.html'
 
     def get(self, request, evento_id):
         evento = get_object_or_404(Evento, pk=evento_id)
