@@ -288,7 +288,6 @@ main {
     background: #f0f0f0;
     padding: 20px;
     border-radius: 12px;
-    display: flex;
     align-items: center;
     gap: 20px;
 }
@@ -301,9 +300,7 @@ main {
 
 /* Nivel 3: recuadro verde para el texto */
 .caja-info {
-    background: linear-gradient(to bottom, #4cd137, #006400); /* degradado verde */
     color: #000;              /* texto en negro para que resalte */
-    padding: 20px;
     border-radius: 10px;
     flex: 1;
     box-shadow: 0 4px 6px rgba(0,0,0,0.1); /* sombra ligera para dar relieve */

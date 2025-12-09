@@ -113,17 +113,19 @@
         <section class="contenedor-mv">
             
             <!-- Contenedor gris claro (nivel 2) -->
-            <div class="contenedor-gris caja-info">
+            <div class="caja-info">
+                <div class="caja-mv">
                 
-                <!-- Logo -->
-                <div class="caja-logo mx-5">
-                    <img src="{% static 'img/logo.png' %}" alt="Logo">
-                </div>
+                    <!-- Logo -->
+                    <div class="caja-logo text-center mx-5 py-2">
+                        <img src="{% static 'img/logo.png' %}" alt="Logo">
+                    </div>
 
-                <!-- Texto en recuadro verde (nivel 3) -->
-                
-                <h5 class="caja-mv">Plataforma digital enfocada en promover eventos educativos, culturales y académicos,
-                    facilitando la inscripción, participación y evaluación en un entorno accesible y profesional.</h5>
+                    <!-- Texto en recuadro verde (nivel 3) -->
+                    
+                    <h5 class="">Plataforma digital enfocada en promover eventos educativos, culturales y académicos,
+                        facilitando la inscripción, participación y evaluación en un entorno accesible y profesional.</h5>
+                </div>
             </div>
         </section>
         
@@ -160,7 +162,7 @@
                 </a>
             </div>
         </section>
-        <hr class="container my-3">
+        <hr>
 
             <nav>
                 <div class="container">
@@ -273,7 +275,7 @@
 
     <footer class="footer-corporativo text-white py-4">            
         <!-- Fila superior con enlaces -->
-        <div class="row justify-content-between text-center text-md-start mb-3">
+        <div class="justify-content-between text-center text-md-start mb-3">
             <div class="col-md-12 d-flex flex-wrap justify-content-center  gap-3">
                 <a href="#" class="footer-link">Contáctanos</a>
                 <a href="#" class="footer-link">Preguntas frecuentes</a>
@@ -288,7 +290,7 @@
         <hr class="bg-white my-5">
         <!-- Texto legal -->
         <div class="text-center">
-            <small>&copy; <span id="year"></span> Event-Soft. Todos los derechos reservados.</small>
+            <small><span id="year"></span> Event-Soft.</small>
         </div>
     </footer>
 
