@@ -162,3 +162,6 @@ SITE_URL = os.getenv('SITE_URL')
 if not DEBUG:
     STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+    #postgresql://edufest_db_np9z_user:2ofib9e1DsuaGRAgH96m0lPEFW5iZuFw@dpg-d4s54tggjchc7386s7og-a/edufest_db_np9z
+    
