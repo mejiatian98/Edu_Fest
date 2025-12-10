@@ -45,12 +45,10 @@ class Evento(models.Model):
 
     # Archivo PDF programación
     eve_programacion = CloudinaryField(
-        'programacion',
-        resource_type='raw',
-        folder='eventos/archivos/',
-        overwrite=True
+        "Archivo de Programación",
+        folder="eventos/archivos",
+        resource_type="raw"
     )
-
 
     # Archivo adicional opcional (PDF, Word, etc)
     eve_informacion_tecnica = CloudinaryField(
@@ -58,8 +56,7 @@ class Evento(models.Model):
         folder="eventos/archivos",
         resource_type="raw",
         blank=True,
-        null=True,
-        overwrite=True
+        null=True
     )
 
     preinscripcion_habilitada_asistentes = models.BooleanField(default=False)
@@ -93,7 +90,7 @@ class MemoriaEvento(models.Model):
     # Archivos PDF/Word/Vídeos/etc
     archivo = CloudinaryField(
         folder="eventos/memorias",
-        resource_type="auto"
+        resource_type="raw"
     )
 
     subido_en = models.DateTimeField(auto_now_add=True)
