@@ -210,6 +210,8 @@ CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
 if CLOUDINARY_URL:
     INSTALLED_APPS += ["cloudinary", "cloudinary_storage"]
     DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+    MEDIA_URL = "/media/"   # NO afecta, Cloudinary lo ignora
 
-MEDIA_URL = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+else:
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
