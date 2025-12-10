@@ -60,6 +60,8 @@ DB_PASSWORD=******
 DB_HOST=localhost
 DB_PORT=3306
 
+------ (Configurar .env con los correos de definidos por el usuario o por Event-Soft) ------
+
 9- correr servidor: py .\manage.py runserver
 
 
@@ -105,19 +107,12 @@ Palabras clave: desarrollo de software, metodología ágil, sistema de informaci
 
 
 - Preinscripción
-
 - Inscripción
-
 - Certificación
-
 - Calificación
-
 - Descarga de documentos 
-
 - Administración de eventos
-
 - Creación de eventos
-
 
 ------------------------------------------------------------------------------------------------------------
 
@@ -126,7 +121,7 @@ Palabras clave: desarrollo de software, metodología ágil, sistema de informaci
 
 - La aplicación está desplegada en Render.
 - Los archivos estáticos están almacenados en Cloudinary.
-- El envío de correos se realiza mediante Brevo (SendinBlue).
+- El envío de correos se realiza mediante Brevo.
 
 ------------------------------------------------------------------------------------------------------------
 
@@ -134,5 +129,6 @@ Palabras clave: desarrollo de software, metodología ágil, sistema de informaci
 # Documentación de Event-Soft
 
 La documentación está en la raíz del proyecto /Documentos_eventsoft
+se alojan, los manuales de usuario, tecnico, las historias de usuario, sprint backlogs, Diagramas y documentación de proyecto formativo.
 
 ---------------------------------------------------------------------------------------------------------
