@@ -170,35 +170,39 @@ if not DEBUG:
 
 # Configuración de correo con opción Brevo o Gmail
 
-    
-    # ----------------------------------------------------
-    # CONFIGURACIÓN DE CORREO - BREVO O GMAIL
-    # ----------------------------------------------------
-    USE_BREVO = config("USE_BREVO", default=False, cast=bool)
 
-    if USE_BREVO:
-        # Envío por Brevo (producción)
-        EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
-        DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
+# ----------------------------------------------------
+# CONFIGURACIÓN DE CORREO - BREVO O GMAIL
+# ----------------------------------------------------
+USE_BREVO = config("USE_BREVO", default=False, cast=bool)
 
-        ANYMAIL = {
-            "BREVO_API_KEY": config("BREVO_API_KEY"),
-        }
+if USE_BREVO:
+    # Envío por Brevo (producción)
+    EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
 
-    else:
-        # Envío local por Gmail (desarrollo)
-        EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-        EMAIL_HOST = 'smtp.gmail.com'
-        EMAIL_PORT = 587
-        EMAIL_USE_TLS = True
-        EMAIL_HOST_USER = config("EMAIL_HOST_USER")
-        EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
-        DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
+    ANYMAIL = {
+        "BREVO_API_KEY": config("BREVO_API_KEY"),
+    }
 
-
-    #postgresql://edufest_db_np9z_user:2ofib9e1DsuaGRAgH96m0lPEFW5iZuFw@dpg-d4s54tggjchc7386s7og-a/edufest_db_np9z
-
-    #BREVO_API_KELY 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
+else:
+    # Envío local por Gmail (desarrollo)
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.gmail.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
 
 
-    
+
+# --- MEDIA FILES Configuración con Cloudinary ---
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
+if CLOUDINARY_URL:
+    INSTALLED_APPS += ["cloudinary", "cloudinary_storage"]
+    DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+else:
+    # si estamos en desarrollo, usamos almacenamiento local
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
