@@ -61,12 +61,14 @@
                             <br>
                             <br>
                             <div class="col-md-12 text-center">
-                            {% if evento.eve_programacion %}
-                                <a href="{{ evento.eve_programacion.url }}" download target="_blank" class="btn btn-success mb-1 ">Descargar</a>
-                                <a href="{{ evento.eve_programacion.url }}" target="_blank" class="btn btn-success mb-1">Previsualizar programación</a>
+                            {% with pdf_url=evento.eve_programacion.url|replace:'raw/upload','upload' %}
+                                <a href="{{ pdf_url }}" target="_blank" class="btn btn-success">Ver PDF</a>
+                                <a href="{{ pdf_url }}" download class="btn btn-primary">Descargar PDF</a>
+                            
+
                             {% else %}
                                 No disponible
-                            {% endif %}
+                            {% endwith %}
                             </div>
                         </div>
                     </small> 
