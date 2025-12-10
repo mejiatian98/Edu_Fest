@@ -1,7 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 import uuid
+from django.db import models
 from django.utils import timezone
+
 
 
 class Usuario(AbstractUser):
@@ -17,36 +19,41 @@ class Usuario(AbstractUser):
     rol = models.CharField(max_length=30, choices=Roles.choices, default=Roles.ASISTENTE)
     cedula = models.CharField(max_length=20, unique=True)
 
+
     def __str__(self):
         return f"{self.username} ({self.rol})"
 
 
 class Asistente(models.Model):
     usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='asistente')
+    
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Asistente"
 
 
 class Participante(models.Model):
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='participante')
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='participante') 
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Participante"
 
 
 class Evaluador(models.Model):
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='evaluador')
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='evaluador') 
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Evaluador"
 
 
 class AdministradorEvento(models.Model):
-    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='administrador_evento')
+    usuario = models.OneToOneField(Usuario, on_delete=models.CASCADE, related_name='administrador_evento') 
 
     def __str__(self):
         return f"{self.usuario.first_name} {self.usuario.last_name} - Administrador de Evento"
+
+
+
 
 
 class InvitacionAdministrador(models.Model):
@@ -57,3 +64,4 @@ class InvitacionAdministrador(models.Model):
 
     def __str__(self):
         return f"Invitación para {self.email}"
+

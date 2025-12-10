@@ -1,5 +1,4 @@
 from django.db import models
-from cloudinary.models import CloudinaryField
 
 
 class Area(models.Model):
@@ -9,7 +8,6 @@ class Area(models.Model):
     def __str__(self):
         return self.are_nombre
 
-
 class Categoria(models.Model):
     cat_nombre = models.CharField(max_length=45)
     cat_descripcion = models.CharField(max_length=400)
@@ -17,7 +15,6 @@ class Categoria(models.Model):
 
     def __str__(self):
         return self.cat_nombre
-
 
 class Evento(models.Model):
     eve_nombre = models.CharField(max_length=100)
@@ -27,53 +24,23 @@ class Evento(models.Model):
     eve_fecha_inicio = models.DateField()
     eve_fecha_fin = models.DateField()
     eve_estado = models.CharField(max_length=45)
-
-    # Imagen Principal del Evento
-    eve_imagen = CloudinaryField(
-        "Imagen/Logo del Evento",
-        folder="eventos/imagenes",
-        resource_type="image"
-    )
-
-    eve_administrador_fk = models.ForeignKey(
-        'app_usuarios.AdministradorEvento',
-        on_delete=models.CASCADE
-    )
-
+    eve_imagen = models.ImageField(upload_to='upload/eventos/imagen', verbose_name="Imagen/Logo del Evento")
+    eve_administrador_fk = models.ForeignKey('app_usuarios.AdministradorEvento', on_delete=models.CASCADE)
     eve_tienecosto = models.CharField(max_length=45)
     eve_capacidad = models.IntegerField()
-
-    # Archivo PDF programación
-    eve_programacion = CloudinaryField(
-        "Archivo de Programación",
-        folder="eventos/archivos",
-        resource_type="auto"
-    )
-
-    # Archivo adicional opcional (PDF, Word, etc)
-    eve_informacion_tecnica = CloudinaryField(
-        "Información Técnica Opcional",
-        folder="eventos/archivos",
-        resource_type="auto",
-        blank=True,
-        null=True
-    )
-    
-
+    eve_programacion = models.FileField(upload_to='upload/eventos/programacion', verbose_name="Archivo de Programación")
+    eve_informacion_tecnica = models.FileField(upload_to='upload/eventos/informacion_tecnica', null=True, blank=True, verbose_name="Información Técnica Opcional")
     preinscripcion_habilitada_asistentes = models.BooleanField(default=False)
     preinscripcion_habilitada_participantes = models.BooleanField(default=False)
     preinscripcion_habilitada_evaluadores = models.BooleanField(default=False)
-
     categorias = models.ManyToManyField(Categoria, through='EventoCategoria')
 
     def __str__(self):
         return self.eve_nombre
 
-
 class EventoCategoria(models.Model):
     eve_cat_evento_fk = models.ForeignKey(Evento, on_delete=models.CASCADE)
     eve_cat_categoria_fk = models.ForeignKey(Categoria, on_delete=models.CASCADE)
-
 
 class Criterio(models.Model):
     cri_descripcion = models.CharField(max_length=150)
@@ -82,19 +49,14 @@ class Criterio(models.Model):
 
     def __str__(self):
         return self.cri_descripcion
-
-
+    
 class MemoriaEvento(models.Model):
+    
     evento = models.ForeignKey(Evento, on_delete=models.CASCADE, related_name='memorias')
     nombre = models.CharField(max_length=100, help_text="Texto descriptivo para el archivo")
-
-    # Archivos PDF/Word/Vídeos/etc
-    archivo = CloudinaryField(
-        folder="eventos/memorias",
-        resource_type="auto"
-    )
-
+    archivo = models.FileField(upload_to='upload/eventos/memorias_eventos', verbose_name="Archivo de Memoria del Evento")
     subido_en = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.nombre} ({self.evento.eve_nombre})"
+    
