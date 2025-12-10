@@ -199,10 +199,14 @@ else:
 
 # --- MEDIA FILES Configuración con Cloudinary ---
 CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
+
 if CLOUDINARY_URL:
     INSTALLED_APPS += ["cloudinary", "cloudinary_storage"]
     DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+
+    # IMPORTANTE
+    MEDIA_URL = "/media/"
+
 else:
-    # si estamos en desarrollo, usamos almacenamiento local
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
