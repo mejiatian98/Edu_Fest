@@ -1,37 +1,28 @@
 from pathlib import Path
 from django.core.management.utils import get_random_secret_key
-from dotenv import load_dotenv
 import os
-import dj_database_url
 from decouple import config
+import dj_database_url
+from dotenv import load_dotenv
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load environment variables from .env file
-from dotenv import load_dotenv
-load_dotenv(dotenv_path=BASE_DIR / '.env')
+# Cargar variables del .env
+load_dotenv(BASE_DIR / ".env")
 
+SECRET_KEY = os.getenv("SECRET_KEY") or get_random_secret_key()
 
-LOGIN_URL = 'login_view'
-
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get("SECRET_KEY") or get_random_secret_key()
-
-# SECURITY WARNING: don't run with debug turned on in production!
+# Debug = solo True si no se está ejecutando en Render
 DEBUG = 'RENDER' not in os.environ
 
-# ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
 if RENDER_EXTERNAL_HOSTNAME:
-    ALLOWED_HOSTS.append (RENDER_EXTERNAL_HOSTNAME)
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-
-
-
-# Application definition
-SITE_ID = 1
+# ----------------------------------------------------------------------
+# APLICACIONES
+# ----------------------------------------------------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -40,16 +31,25 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
+
+    # Apps
     'app_usuarios.apps.AppUsuariosConfig',
     'app_admin_eventos',
     'app_asistentes',
     'app_participantes',
     'app_evaluadores',
-    # anymail para brevo
-    'anymail',
 
+    # Email Brevo
+    'anymail',
 ]
 
+# CLOUDINARY (si existe CLOUDINARY_URL en .env)
+if os.getenv("CLOUDINARY_URL"):
+    INSTALLED_APPS += ["cloudinary", "cloudinary_storage"]
+
+# ----------------------------------------------------------------------
+# MIDDLEWARE
+# ----------------------------------------------------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -59,8 +59,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    
-    
 ]
 
 ROOT_URLCONF = 'principal_eventos.urls'
@@ -68,9 +66,14 @@ ROOT_URLCONF = 'principal_eventos.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': ['templates','app_admin_eventos/templates/app_admin_eventos', 'app_evaluadores/templates/app_evaluadores',
-                 'app_participantes/templates/app_participantes', 'app_asistentes/templates/app_asistentes',
-                 'app_usuarios/templates/app_usuarios'],
+        'DIRS': [
+            BASE_DIR / "templates",
+            "app_admin_eventos/templates/app_admin_eventos",
+            "app_evaluadores/templates/app_evaluadores",
+            "app_participantes/templates/app_participantes",
+            "app_asistentes/templates/app_asistentes",
+            "app_usuarios/templates/app_usuarios",
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -84,116 +87,70 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'principal_eventos.wsgi.application'
 
-# Database
-# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+# ----------------------------------------------------------------------
+# BASE DE DATOS
+# ----------------------------------------------------------------------
+if DEBUG:
+    # MySQL LOCAL
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': config('DB_NAME'),
+            'USER': config('DB_USER'),
+            'PASSWORD': config('DB_PASSWORD'),
+            'HOST': config('DB_HOST'),
+            'PORT': config('DB_PORT'),
+            'OPTIONS': {"init_command": "SET sql_mode='STRICT_TRANS_TABLES'"},
+        }
+    }
+else:
+    # PostgreSQL en Render (automático)
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.getenv("DATABASE_URL"),
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'NAME': os.getenv('DB_NAME'),
-#         'USER': os.getenv('DB_USER'),
-#         'PASSWORD': os.getenv('DB_PASSWORD'),
-#         'HOST': os.getenv('DB_HOST'),
-#         'PORT': os.getenv('DB_PORT'),
-#     }
-# }
-
-
-DATABASES = {
-    'default': dj_database_url.config(conn_max_age=600, ssl_require=not DEBUG)
-}
-
-
-# Password validation
-# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
-
-# Internationalization
-# https://docs.djangoproject.com/en/5.2/topics/i18n/
-
-LANGUAGE_CODE = 'es-co'
-TIME_ZONE = 'America/Bogota'  # O tu zona horaria local
-USE_I18N = True
-USE_L10N = True
-USE_TZ = True
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
-
-
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-
-
-# STATIC_URL = 'static/'
-# STATICFILES_DIRS = [
-#     BASE_DIR / "static",
-#     BASE_DIR / "app_admin_eventos/static",
-#     BASE_DIR / "app_participantes/static",
-#     BASE_DIR / "app_asistentes/static",
-# ]
-
-# Default primary key field type
-# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
-
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# Configuración de correo
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-
-
-#Colab #9
+# ----------------------------------------------------------------------
+# AUTENTICACIÓN
+# ----------------------------------------------------------------------
 AUTH_USER_MODEL = 'app_usuarios.Usuario'
+LOGIN_URL = 'login_view'
 
-SITE_URL = os.getenv('SITE_URL')
+# ----------------------------------------------------------------------
+# ARCHIVOS ESTÁTICOS (CSS, JS)
+# ----------------------------------------------------------------------
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 if not DEBUG:
-    STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+# ----------------------------------------------------------------------
+# MEDIA (IMÁGENES Y ARCHIVOS)
+# ----------------------------------------------------------------------
+CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
 
+if CLOUDINARY_URL:
+    DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
+    MEDIA_URL = "/media/"   # Cloudinary no usa MEDIA_ROOT
+else:
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
 
-# Configuración de correo con opción Brevo o Gmail
-
-
-# ----------------------------------------------------
-# CONFIGURACIÓN DE CORREO - BREVO O GMAIL
-# ----------------------------------------------------
+# ----------------------------------------------------------------------
+# CORREO (Brevo o Gmail)
+# ----------------------------------------------------------------------
 USE_BREVO = config("USE_BREVO", default=False, cast=bool)
 
 if USE_BREVO:
-    # Envío por Brevo (producción)
     EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
     DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-
-    ANYMAIL = {
-        "BREVO_API_KEY": config("BREVO_API_KEY"),
-    }
-
+    ANYMAIL = {"BREVO_API_KEY": config("BREVO_API_KEY")}
 else:
-    # Envío local por Gmail (desarrollo)
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = 'smtp.gmail.com'
     EMAIL_PORT = 587
@@ -201,17 +158,4 @@ else:
     EMAIL_HOST_USER = config("EMAIL_HOST_USER")
     EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
     DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-
-
-
-# --- MEDIA FILES Configuración con Cloudinary ---
-CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
-
-if CLOUDINARY_URL:
-    INSTALLED_APPS += ["cloudinary", "cloudinary_storage"]
-    DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
-    MEDIA_URL = "/media/"   # NO afecta, Cloudinary lo ignora
-
-else:
-    MEDIA_URL = "/media/"
-    MEDIA_ROOT = BASE_DIR / "media"
+# ----------------------------------------------------------------------
