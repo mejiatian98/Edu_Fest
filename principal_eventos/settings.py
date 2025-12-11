@@ -41,11 +41,12 @@ INSTALLED_APPS = [
 
     # Email Brevo
     'anymail',
+
+    # AWS S3
+    'storages',
 ]
 
-# CLOUDINARY (si existe CLOUDINARY_URL en .env)
-if os.getenv("CLOUDINARY_URL"):
-    INSTALLED_APPS += ["cloudinary", "cloudinary_storage"]
+
 
 # ----------------------------------------------------------------------
 # MIDDLEWARE
@@ -130,17 +131,41 @@ if not DEBUG:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ----------------------------------------------------------------------
-# MEDIA (IMÁGENES Y ARCHIVOS)
+# MEDIA (IMÁGENES Y ARCHIVOS) CON AWS S3
 # ----------------------------------------------------------------------
-CLOUDINARY_URL = os.getenv("CLOUDINARY_URL")
 
-if CLOUDINARY_URL:
-    DEFAULT_FILE_STORAGE = "cloudinary_storage.storage.MediaCloudinaryStorage"
-    MEDIA_URL = "/media/"   # Cloudinary no usa MEDIA_ROOT
-    
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Detecta si estás en producción (Render) usando una variable del sistema
+IS_PRODUCTION = os.getenv("RENDER") == "true"
+
+if IS_PRODUCTION:
+    # ----------------------------
+    #   AWS S3 (Producción)
+    # ----------------------------
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")
+
+    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+
+    # Archivos subidos por usuarios
+    DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
+
+    # Archivos estáticos (opcional, puedes dejarlos en Render)
+    # STATICFILES_STORAGE = "storages.backends.s3boto3.S3StaticStorage"
+
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
+    # AWS S3 NO USA MEDIA_ROOT
+
 else:
+    # ----------------------------
+    #   Local (Desarrollo)
+    # ----------------------------
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
+
 
 # ----------------------------------------------------------------------
 # CORREO (Brevo o Gmail)
