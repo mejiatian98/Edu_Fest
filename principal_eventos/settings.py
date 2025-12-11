@@ -14,7 +14,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Cargar variables del .env
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.getenv("SECRET_KEY") or get_random_secret_secret_key()
+SECRET_KEY = os.getenv("SECRET_KEY") or get_random_secret_key()
+
 
 # Detectar si estamos en Render
 IS_PRODUCTION = os.getenv("RENDER_EXTERNAL_HOSTNAME") is not None
