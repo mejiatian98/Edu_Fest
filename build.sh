@@ -8,6 +8,3 @@ python manage.py collectstatic --no-input
 python manage.py migrate
 
 python manage.py createsuperuser --no-input || true
-
-
-#python -m gunicorn principal_eventos.asgi:application -k uvicorn.workers.UvicornWorker
