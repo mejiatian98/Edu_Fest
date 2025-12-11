@@ -1,3 +1,7 @@
+# --------------------------------------------
+# SETTINGS.PY CORREGIDO CON AWS S3 + RENDER
+# --------------------------------------------
+
 from pathlib import Path
 from django.core.management.utils import get_random_secret_key
 import os
@@ -10,19 +14,20 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Cargar variables del .env
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.getenv("SECRET_KEY") or get_random_secret_key()
+SECRET_KEY = os.getenv("SECRET_KEY") or get_random_secret_secret_key()
 
-# Debug = solo True si no se está ejecutando en Render
-DEBUG = 'RENDER' not in os.environ
+# Detectar si estamos en Render
+IS_PRODUCTION = os.getenv("RENDER_EXTERNAL_HOSTNAME") is not None
+DEBUG = not IS_PRODUCTION
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
-RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+RENDER_EXTERNAL_HOSTNAME = os.getenv("RENDER_EXTERNAL_HOSTNAME")
 if RENDER_EXTERNAL_HOSTNAME:
     ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
 
-# ----------------------------------------------------------------------
-# APLICACIONES
-# ----------------------------------------------------------------------
+# ----------------------------
+# APPS
+# ----------------------------
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -46,34 +51,30 @@ INSTALLED_APPS = [
     'storages',
 ]
 
-
-
-# ----------------------------------------------------------------------
+# ----------------------------
 # MIDDLEWARE
-# ----------------------------------------------------------------------
+# ----------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
 ]
 
 ROOT_URLCONF = 'principal_eventos.urls'
 
+# ----------------------------
+# TEMPLATES
+# ----------------------------
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
             BASE_DIR / "templates",
-            "app_admin_eventos/templates/app_admin_eventos",
-            "app_evaluadores/templates/app_evaluadores",
-            "app_participantes/templates/app_participantes",
-            "app_asistentes/templates/app_asistentes",
-            "app_usuarios/templates/app_usuarios",
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -88,11 +89,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'principal_eventos.wsgi.application'
 
-# ----------------------------------------------------------------------
-# BASE DE DATOS
-# ----------------------------------------------------------------------
+# ----------------------------
+# DATABASE
+# ----------------------------
 if DEBUG:
-    # MySQL LOCAL
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -105,7 +105,6 @@ if DEBUG:
         }
     }
 else:
-    # PostgreSQL en Render (automático)
     DATABASES = {
         'default': dj_database_url.config(
             default=os.getenv("DATABASE_URL"),
@@ -114,35 +113,26 @@ else:
         )
     }
 
-# ----------------------------------------------------------------------
-# AUTENTICACIÓN
-# ----------------------------------------------------------------------
+# ----------------------------
+# AUTH
+# ----------------------------
 AUTH_USER_MODEL = 'app_usuarios.Usuario'
 LOGIN_URL = 'login_view'
 
-# ----------------------------------------------------------------------
-# ARCHIVOS ESTÁTICOS (CSS, JS)
-# ----------------------------------------------------------------------
+# ----------------------------
+# STATIC FILES
+# ----------------------------
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / "static"]
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-if not DEBUG:
+if IS_PRODUCTION:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# ----------------------------------------------------------------------
-# MEDIA (IMÁGENES Y ARCHIVOS) CON AWS S3
-# ----------------------------------------------------------------------
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Detecta si estás en producción (Render) usando una variable del sistema
-IS_PRODUCTION = os.getenv("RENDER") == "true"
-
+# ----------------------------
+# AWS S3 MEDIA STORAGE
+# ----------------------------
 if IS_PRODUCTION:
-    # ----------------------------
-    #   AWS S3 (Producción)
-    # ----------------------------
     AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
@@ -150,26 +140,21 @@ if IS_PRODUCTION:
 
     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
 
-    # Archivos subidos por usuarios
+    # Recomendados
+    AWS_DEFAULT_ACL = None
+    AWS_QUERYSTRING_AUTH = False
+    AWS_S3_FILE_OVERWRITE = False
+
     DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 
-    # Archivos estáticos (opcional, puedes dejarlos en Render)
-    # STATICFILES_STORAGE = "storages.backends.s3boto3.S3StaticStorage"
-
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/media/"
-    # AWS S3 NO USA MEDIA_ROOT
-
 else:
-    # ----------------------------
-    #   Local (Desarrollo)
-    # ----------------------------
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
 
-
-# ----------------------------------------------------------------------
-# CORREO (Brevo o Gmail)
-# ----------------------------------------------------------------------
+# ----------------------------
+# EMAIL BREVO CONFIGURATION
+# ----------------------------
 USE_BREVO = config("USE_BREVO", default=False, cast=bool)
 
 if USE_BREVO:
@@ -184,5 +169,3 @@ else:
     EMAIL_HOST_USER = config("EMAIL_HOST_USER")
     EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
     DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-    
-# ----------------------------------------------------------------------
