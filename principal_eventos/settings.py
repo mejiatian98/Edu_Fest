@@ -61,7 +61,7 @@ INSTALLED_APPS = [
 
 
 # --------------------------------------------
-# si
+# sitio ID (importante para django.contrib.sites)
 # --------------------------------------------
 SITE_ID = 1
 
@@ -152,61 +152,38 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 if IS_PRODUCTION:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
-# --------------------------------------------
-# MEDIA – AWS S3
-# --------------------------------------------
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-AWS_QUERYSTRING_AUTH = False
-
-# --------------------------------------------
-# STORAGES - AWS S3 - MEDIA FILES
-# --------------------------------------------
-
-# if DEBUG:
-#     MEDIA_URL = "/media/"
-#     MEDIA_ROOT = BASE_DIR / "media"
-# else:
-#     STORAGES = {
-#         "default": {
-#             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-#         },
-#         "staticfiles": {
-#             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-#         },
-#     }
-
 
 # --------------------------------------------
 # STORAGES - LOCAL IN DEV / S3 IN PRODUCTION
 # --------------------------------------------
-if DEBUG:
-    # DEV: Usar media local
-    MEDIA_URL = "/media/"
-    MEDIA_ROOT = BASE_DIR / "media"
 
-else:
-    # PRODUCTION: Usar Amazon S3
-    STORAGES = {
-        "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        },
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-        },
-    }
 
-    AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
-    AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME")
-    
-    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
-    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
+AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME")
+AWS_QUERYSTRING_AUTH = False
 
-    AWS_QUERYSTRING_AUTH = False
-    AWS_DEFAULT_ACL = "public-read"
+
+
+
+# DEV: Usar media local
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+
+# PRODUCTION: Usar Amazon S3
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
+
+
+
 
 
 
@@ -216,21 +193,18 @@ else:
 # --------------------------------------------
 # EMAIL – GMAIL EN DEV, BREVO EN PRODUCCIÓN
 # --------------------------------------------
-from decouple import config
-USE_BREVO = config("USE_BREVO", default=False, cast=bool)
 
-if USE_BREVO:
-    # PRODUCCIÓN: Usar Brevo
-    EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
-    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-    BREVO_API_KEY = config("BREVO_API_KEY")
-    
-else:
-    # DESARROLLO: Usar Gmail
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-    EMAIL_HOST = 'smtp.gmail.com'
-    EMAIL_PORT = 587
-    EMAIL_USE_TLS = True
-    EMAIL_HOST_USER = config("EMAIL_HOST_USER")
-    EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
-    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
+# PRODUCCIÓN: Usar Brevo
+EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
+BREVO_API_KEY = config("BREVO_API_KEY")
+
+
+# DESARROLLO: Usar Gmail
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
