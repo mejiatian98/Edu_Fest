@@ -1,0 +1,28 @@
+SECRET_KEY=tu_secret_key
+DEBUG=True
+ALLOWED_HOSTS=127.0.0.1
+
+# Configuración del correo (Gmail)
+EMAIL_HOST_USER=halosniper1963@gmail.com
+EMAIL_HOST_PASSWORD=gxye roek bvao yawz
+DEFAULT_FROM_EMAIL="Event-Soft <halosniper1963@gmail.com>"
+
+
+# Clave secreta de Django
+SECRET_KEY=tu_clave_secreta_super_segura
+
+# Activar modo debug (solo en desarrollo)
+DEBUG=True
+
+# Hosts permitidos (evita el error de DisallowedHost)
+
+# Configuración de la base de datos
+DB_NAME=bd_edufest_2
+DB_USER=root
+DB_PASSWORD=0000
+DB_HOST=localhost
+DB_PORT=3306
+
+
+
+SITE_URL = "http://127.0.0.1:8000"  # o el dominio real de tu app
