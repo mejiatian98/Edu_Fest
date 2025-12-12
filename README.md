@@ -24,7 +24,7 @@
 5- Instalar dependías del proyecto: pip install -r .\requirements.txt
 6- Instalar migraciones: py .\manage.py migrate
 7- Crear superusuario: py .\manage.py createsuperuser "rellenar campos" 
-8 - Crear archivo variable de entorno .env en la raiz del proyecto que contenga lo siguiente:
+8- Crear archivo variable de entorno .env en la raiz del proyecto que contenga lo siguiente:
 
 
 ----- DJANGO -----
@@ -131,9 +131,10 @@ Acá la configuracion de ambiente en Render
 
 
 - Los archivos media estan configurados en AWS S3.
-PASO 1 crear una cuenta en [AWSEntrar a S3](https://aws.amazon.com/s3/) 
-PASO 2 crear un Bucket
-PASO 3 Dar permisos al bukcet, poner lo siguiente:
+
+- PASO 1 crear una cuenta en [AWSEntrar a S3](https://aws.amazon.com/s3/) 
+- PASO 2 crear un Bucket
+- PASO 3 Dar permisos al bukcet, poner lo siguiente:
 
 {
     "Version": "2012-10-17",
@@ -150,10 +151,10 @@ PASO 3 Dar permisos al bukcet, poner lo siguiente:
     ]
 }
 
-PASO 4 Entrar a IAM y crear un usuario
-PASO 5 Dar politicas de permiso, por defecto seleccionar AmazonS3FullAccess
-PASO 6 Crear Clave de acceso en este mismo apartado del usuario usuario previamente creado
-PASO 7 copiar y pegar en entorno virtual de render la siguiente con su respectivo valor
+- PASO 4 Entrar a IAM y crear un usuario
+- PASO 5 Dar politicas de permiso, por defecto seleccionar AmazonS3FullAccess
+- PASO 6 Crear Clave de acceso en este mismo apartado del usuario usuario previamente creado
+- PASO 7 copiar y pegar en entorno virtual de render la siguiente con su respectivo valor
 
 AWS_ACCESS_KEY_ID =****************
 AWS_SECRET_ACCESS_KEY =***********************************
@@ -164,10 +165,10 @@ AWS_S3_REGION_NAME =us-east-#
 
 - El envío de correos se realiza mediante Brevo.
 
-PASO 1 Crear una cuenta de brevo
-PASO 2 Ir a configuracion y entrar a SMTP Y API 
-PASO 3 Generar una clave API y MCP
-PASO 4 copiar y pegar en el entorno virtual de render
+- PASO 1 Crear una cuenta de brevo
+- PASO 2 Ir a configuracion y entrar a SMTP Y API 
+- PASO 3 Generar una clave API y MCP
+- PASO 4 copiar y pegar en el entorno virtual de render
 
 USE_BREVO=False
 BREVO_API_KEY=******************************************
@@ -183,7 +184,7 @@ Debe tener un correo verificado en Brevo el cual sera el DEFAULT_FROM_EMAIL
 
 # Documentación de Event-Soft
 
-La documentación está en la raíz del proyecto [text](Documentos_eventsoft)
+La documentación está en la raíz del proyecto [Documentos_eventsoft](Documentos_eventsoft)
 se alojan, los manuales de usuario, tecnico, las historias de usuario, sprint backlogs, Diagramas y documentación de proyecto formativo.
 
 ---------------------------------------------------------------------------------------------------------
