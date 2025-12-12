@@ -7,7 +7,6 @@ import os
 from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
 import dj_database_url
-from decouple import config
 
 # --------------------------------------------
 # BASE DIR & ENV
@@ -108,6 +107,7 @@ WSGI_APPLICATION = 'principal_eventos.wsgi.application'
 
 if DEBUG:
     # DEV – MySQL
+    from decouple import config
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -146,55 +146,34 @@ if IS_PRODUCTION:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # --------------------------------------------
-# MEDIA FILES – AWS S3 (Solo en Producción)
+# MEDIA – AWS S3
 # --------------------------------------------
 
-if IS_PRODUCTION:
-    # PRODUCCIÓN: Usar AWS S3
-    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-    AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-    AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_REGION_NAME = os.getenv("AWS_S3_REGION_NAME", "us-east-1")  # Configura tu región
+AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+AWS_STORAGE_BUCKET_NAME = os.getenv("AWS_STORAGE_BUCKET_NAME")
+AWS_QUERYSTRING_AUTH = False
     
-    # Configuración de S3
-    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
-    AWS_S3_OBJECT_PARAMETERS = {
-        'CacheControl': 'max-age=86400',
-    }
-    AWS_DEFAULT_ACL = 'public-read'
-    AWS_QUERYSTRING_AUTH = False
-    AWS_S3_FILE_OVERWRITE = False
-    
-    # URLs para archivos media
-    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/media/'
-    
-    # Configurar STORAGES para Django 4.2+
-    STORAGES = {
-        "default": {
-            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-        },
-        "staticfiles": {
-            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-        },
-    }
-else:
-    # DESARROLLO: Usar almacenamiento local
-    MEDIA_URL = '/media/'
-    MEDIA_ROOT = BASE_DIR / "media"
-    
-    STORAGES = {
-        "default": {
-            "BACKEND": "django.core.files.storage.FileSystemStorage",
-        },
-        "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
-        },
-    }
+
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}   
+
 
 # --------------------------------------------
 # EMAIL – BREVO O GMAIL
 # --------------------------------------------
-
+from decouple import config
 USE_BREVO = config("USE_BREVO", default=False, cast=bool)
 
 if USE_BREVO:
@@ -209,22 +188,4 @@ else:
     EMAIL_HOST_USER = config("EMAIL_HOST_USER")
     EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
     DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-
 # --------------------------------------------
-# SEGURIDAD EN PRODUCCIÓN
-# --------------------------------------------
-
-if IS_PRODUCTION:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    SECURE_HSTS_SECONDS = 31536000
-    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-    SECURE_HSTS_PRELOAD = True
-
-# --------------------------------------------
-# DEFAULT PRIMARY KEY
-# --------------------------------------------
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
