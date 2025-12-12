@@ -7,18 +7,14 @@ import os
 from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
 import dj_database_url
-from decouple import config, UndefinedValueError
-import logging
-
-# Configurar logging
-logger = logging.getLogger(__name__)
+from decouple import config
 
 # --------------------------------------------
 # BASE DIR & ENV
 # --------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+load_dotenv(BASE_DIR / ".env")  # Cargar .env local si existe
 
 SECRET_KEY = os.getenv("SECRET_KEY") or get_random_secret_key()
 
@@ -64,7 +60,7 @@ INSTALLED_APPS = [
 ]
 
 # --------------------------------------------
-# sitio ID
+# sitio ID (importante para django.contrib.sites)
 # --------------------------------------------
 SITE_ID = 1
 
@@ -115,6 +111,7 @@ WSGI_APPLICATION = 'principal_eventos.wsgi.application'
 # BASE DE DATOS
 # --------------------------------------------
 if IS_PRODUCTION:
+    # PRODUCCIÓN – PostgreSQL en Render
     DATABASES = {
         'default': dj_database_url.config(
             default=os.getenv("DATABASE_URL"),
@@ -123,12 +120,13 @@ if IS_PRODUCTION:
         )
     }
 else:
+    # DESARROLLO – MySQL local
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
-            'NAME': config('DB_NAME', default='bd_edufest'),
-            'USER': config('DB_USER', default='root'),
-            'PASSWORD': config('DB_PASSWORD', default=''),
+            'NAME': config('DB_NAME'),
+            'USER': config('DB_USER'),
+            'PASSWORD': config('DB_PASSWORD'),
             'HOST': config('DB_HOST', default='localhost'),
             'PORT': config('DB_PORT', default='3306'),
         }
@@ -151,93 +149,55 @@ if IS_PRODUCTION:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 # ---------------------------------------------------
-# MEDIA FILES - AWS S3
+# MEDIA FILES
 # ---------------------------------------------------
-USE_S3 = IS_PRODUCTION
+if IS_PRODUCTION:
+    # Amazon S3 para producción
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
 
-if USE_S3:
-    try:
-        # Obtener credenciales AWS
-        AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
-        AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
-        AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
-        AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME", default="us-east-2")
-        
-        # Validar que las credenciales existen
-        if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
-            # Configuración de S3
-            STORAGES = {
-                "default": {
-                    "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
-                },
-                "staticfiles": {
-                    "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-                },
-            }
+    AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME", default="us-east-2")
 
-            # Configuración adicional de S3
-            AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
-            MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
-            
-            AWS_S3_OBJECT_PARAMETERS = {
-                'CacheControl': 'max-age=86400',
-            }
-            AWS_QUERYSTRING_AUTH = False
-            AWS_DEFAULT_ACL = "public-read"
-            AWS_S3_FILE_OVERWRITE = False
-            AWS_S3_VERIFY = True
-            
-            logger.info("✅ AWS S3 configurado correctamente")
-        else:
-            raise ValueError("Credenciales de AWS incompletas")
-            
-    except (UndefinedValueError, ValueError) as e:
-        logger.error(f"❌ Error configurando AWS S3: {e}")
-        logger.warning("⚠️ Usando almacenamiento local como fallback")
-        USE_S3 = False
-        MEDIA_URL = "/media/"
-        MEDIA_ROOT = BASE_DIR / "media"
+    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
+
+    AWS_QUERYSTRING_AUTH = False
+    AWS_DEFAULT_ACL = "public-read"
 else:
     # Media local para desarrollo
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
-    logger.info("📁 Usando almacenamiento local para media")
 
 # ---------------------------------------------------
 # EMAIL CONFIGURATION
 # ---------------------------------------------------
-try:
-    USE_BREVO = config('USE_BREVO', default=False, cast=bool)
-    
-    if USE_BREVO:
-        BREVO_API_KEY = config("BREVO_API_KEY")
-        
-        if BREVO_API_KEY:
-            EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
-            ANYMAIL = {
-                "BREVO_API_KEY": BREVO_API_KEY,
-            }
-            DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@ejemplo.com")
-            logger.info("✅ Email configurado con Brevo")
-        else:
-            raise ValueError("BREVO_API_KEY no encontrado")
-    else:
-        # Gmail fallback
-        EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-        EMAIL_HOST = 'smtp.gmail.com'
-        EMAIL_PORT = 587
-        EMAIL_USE_TLS = True
-        EMAIL_HOST_USER = config("EMAIL_HOST_USER", default="")
-        EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
-        DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@ejemplo.com")
-        logger.info("✅ Email configurado con Gmail")
-        
-except (UndefinedValueError, ValueError) as e:
-    logger.error(f"❌ Error configurando email: {e}")
-    # Fallback a consola para desarrollo
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    DEFAULT_FROM_EMAIL = "noreply@ejemplo.com"
-    logger.warning("⚠️ Email configurado para mostrar en consola")
+USE_BREVO = config('USE_BREVO', default=False, cast=bool)
+
+if USE_BREVO:
+    # Brevo (para desarrollo o producción según USE_BREVO)
+    EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+    ANYMAIL = {
+        "BREVO_API_KEY": config("BREVO_API_KEY"),
+    }
+    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
+else:
+    # Gmail (desarrollo)
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.gmail.com'
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = config("EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
+    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
 
 # ---------------------------------------------------
 # SECURITY (PRODUCCIÓN)
@@ -273,31 +233,9 @@ USE_TZ = True
 # ---------------------------------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# ---------------------------------------------------
-# LOGGING CONFIGURATION
-# ---------------------------------------------------
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
-}
+
 
 # ---------------------------------------------------
-# SUPERADMIN EMAIL
+# CORREO SUPERUSER AL CREARLO
 # ---------------------------------------------------
-SUPERADMIN_EMAIL = config('SUPERADMIN_EMAIL', default='admin@ejemplo.com')
+SUPERADMIN_EMAIL = config('SUPERADMIN_EMAIL')
