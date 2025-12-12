@@ -173,8 +173,9 @@ else:
 # --------------------------------------------
 # EMAIL – GMAIL EN DEV, BREVO EN PRODUCCIÓN
 # --------------------------------------------
+USE_BREVO = config("USE_BREVO", default=False, cast=bool)
 
-if DEBUG:
+if USE_BREVO:
     # DESARROLLO: Usar Gmail
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = 'smtp.gmail.com'
