@@ -21,8 +21,10 @@ SECRET_KEY = os.getenv("SECRET_KEY") or get_random_secret_key()
 # --------------------------------------------
 # DEBUG / PRODUCCIÓN
 # --------------------------------------------
+
 IS_PRODUCTION = os.getenv("RENDER_EXTERNAL_HOSTNAME") is not None
-DEBUG = config('DEBUG', default=False, cast=bool)
+DEBUG = not IS_PRODUCTION
+
 
 # --------------------------------------------
 # ALLOWED HOSTS
@@ -59,17 +61,19 @@ INSTALLED_APPS = [
     'storages',
 ]
 
+
 # --------------------------------------------
 # sitio ID (importante para django.contrib.sites)
 # --------------------------------------------
 SITE_ID = 1
+
 
 # --------------------------------------------
 # MIDDLEWARE
 # --------------------------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'whitenoise.middleware.WhiteNoiseMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Necesario en Render
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -110,7 +114,21 @@ WSGI_APPLICATION = 'principal_eventos.wsgi.application'
 # --------------------------------------------
 # BASE DE DATOS
 # --------------------------------------------
-if IS_PRODUCTION:
+
+if DEBUG:
+    # DEV – MySQL
+    from decouple import config
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': config('DB_NAME'),
+            'USER': config('DB_USER'),
+            'PASSWORD': config('DB_PASSWORD'),
+            'HOST': config('DB_HOST'),
+            'PORT': config('DB_PORT'),
+        }
+    }
+else:
     # PRODUCCIÓN – PostgreSQL en Render
     DATABASES = {
         'default': dj_database_url.config(
@@ -118,18 +136,6 @@ if IS_PRODUCTION:
             conn_max_age=600,
             ssl_require=True,
         )
-    }
-else:
-    # DESARROLLO – MySQL local
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': config('DB_NAME'),
-            'USER': config('DB_USER'),
-            'PASSWORD': config('DB_PASSWORD'),
-            'HOST': config('DB_HOST', default='localhost'),
-            'PORT': config('DB_PORT', default='3306'),
-        }
     }
 
 # --------------------------------------------
@@ -148,11 +154,17 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 if IS_PRODUCTION:
     STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
+
 # ---------------------------------------------------
 # MEDIA FILES
 # ---------------------------------------------------
-if IS_PRODUCTION:
-    # Amazon S3 para producción
+if DEBUG:
+    # Local media
+    MEDIA_URL = "/media/"
+    MEDIA_ROOT = BASE_DIR / "media"
+
+else:
+    # Amazon S3 media
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
@@ -165,32 +177,21 @@ if IS_PRODUCTION:
     AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
     AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
-    AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME", default="us-east-2")
+    AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME")
 
     AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
     MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 
     AWS_QUERYSTRING_AUTH = False
     AWS_DEFAULT_ACL = "public-read"
-else:
-    # Media local para desarrollo
-    MEDIA_URL = "/media/"
-    MEDIA_ROOT = BASE_DIR / "media"
+
+
+
 
 # ---------------------------------------------------
-# EMAIL CONFIGURATION
+# EMAIL: Gmail en DEV, Brevo en PROD
 # ---------------------------------------------------
-USE_BREVO = config('USE_BREVO', default=False, cast=bool)
-
-if USE_BREVO:
-    # Brevo (para desarrollo o producción según USE_BREVO)
-    EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
-    ANYMAIL = {
-        "BREVO_API_KEY": config("BREVO_API_KEY"),
-    }
-    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-else:
-    # Gmail (desarrollo)
+if DEBUG:
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = 'smtp.gmail.com'
     EMAIL_PORT = 587
@@ -199,36 +200,7 @@ else:
     EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
     DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
 
-# ---------------------------------------------------
-# SECURITY (PRODUCCIÓN)
-# ---------------------------------------------------
-if IS_PRODUCTION:
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = 'DENY'
-
-# ---------------------------------------------------
-# PASSWORD VALIDATION
-# ---------------------------------------------------
-AUTH_PASSWORD_VALIDATORS = [
-    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
-]
-
-# ---------------------------------------------------
-# INTERNATIONALIZATION
-# ---------------------------------------------------
-LANGUAGE_CODE = 'es'
-TIME_ZONE = 'America/Bogota'
-USE_I18N = True
-USE_TZ = True
-
-# ---------------------------------------------------
-# DEFAULT PRIMARY KEY
-# ---------------------------------------------------
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+else:
+    EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+    BREVO_API_KEY = config("BREVO_API_KEY")
+    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
