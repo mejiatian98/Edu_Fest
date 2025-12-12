@@ -14,9 +14,7 @@
 ----------------------------------------------------------------------------------------------------
 
 
-# Repositorio de la aplicación: 
-
-https://github.com/mejiatian98/Edu_Fest.git
+Repositorio de la aplicación: https://github.com/mejiatian98/Edu_Fest.git 
 
 
 1- Clonar repositorio: git cloné https://github.com/mejiatian98/Edu_Fest.git  
