@@ -187,7 +187,7 @@ if DEBUG:
     EMAIL_HOST_USER = config("EMAIL_HOST_USER")
     EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
     DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-    print(f"📧 Modo desarrollo: Enviando emails con Gmail ({EMAIL_HOST_USER})")
+
 else:
     # PRODUCCIÓN: Usar Brevo
     EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
@@ -198,4 +198,3 @@ else:
         "BREVO_API_KEY": BREVO_API_KEY,
         "BREVO_API_URL": "https://api.brevo.com/v3/",
     }
-    print(f"📧 Modo producción: Enviando emails con Brevo ({DEFAULT_FROM_EMAIL})")
