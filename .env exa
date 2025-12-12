@@ -23,6 +23,6 @@ DB_PASSWORD=0000
 DB_HOST=localhost
 DB_PORT=3306
 
-
+USE_BREVO = False
 
 SITE_URL = "http://127.0.0.1:8000"  # o el dominio real de tu app
