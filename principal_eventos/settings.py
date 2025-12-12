@@ -59,6 +59,13 @@ INSTALLED_APPS = [
     'storages',
 ]
 
+
+# --------------------------------------------
+# si
+# --------------------------------------------
+SITE_ID = 1
+
+
 # --------------------------------------------
 # MIDDLEWARE
 # --------------------------------------------
@@ -156,20 +163,50 @@ AWS_QUERYSTRING_AUTH = False
 # --------------------------------------------
 # STORAGES - AWS S3 - MEDIA FILES
 # --------------------------------------------
+
+# if DEBUG:
+#     MEDIA_URL = "/media/"
+#     MEDIA_ROOT = BASE_DIR / "media"
+# else:
+#     STORAGES = {
+#         "default": {
+#             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+#         },
+#         "staticfiles": {
+#             "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+#         },
+#     }
+
+
+# --------------------------------------------
+# STORAGES - LOCAL IN DEV / S3 IN PRODUCTION
+# --------------------------------------------
 if DEBUG:
+    # DEV: Usar media local
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
+
 else:
+    # PRODUCTION: Usar Amazon S3
     STORAGES = {
         "default": {
             "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
         },
         "staticfiles": {
-            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
         },
     }
 
+    AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
+    AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
+    AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
+    AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME")
+    
+    AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com"
+    MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
 
+    AWS_QUERYSTRING_AUTH = False
+    AWS_DEFAULT_ACL = "public-read"
 
 
 
