@@ -28,39 +28,38 @@
 
 
 ----- DJANGO -----
-
 SECRET_KEY=tu_clave_secreta_super_segura
 DEBUG=True
-ALLOWED_HOSTS=127.0.0.1,localhost
 
-
------ CLOUDINARY -----
-
-CLOUDINARY_URL=cloudinary://*************:@dhkibzgtv
-
-
------ EMAIL (BREVO) -----
-
-USE_BREVO=True
-BREVO_API_KEY=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
-DEFAULT_FROM_EMAIL="Event-Soft "
-
-
------ APP -----
-
-SITE_URL=http://127.0.0.1:8000
-SUPERADMIN_EMAIL=correosuperadminaca@gmail.com
-
-
------- Configuración de la base de datos ------
-
-DB_NAME=nombre_de_la_base_datos
+--------- BASE DATOS LOCAL --------
+DB_NAME= nombre_de_la_base_de_datos
 DB_USER=root
-DB_PASSWORD=******
+DB_PASSWORD=****
 DB_HOST=localhost
 DB_PORT=3306
 
------- (Configurar .env con los correos de definidos por el usuario o por Event-Soft) ------
+----- CORREO GMAIL lOCAL -----
+EMAIL_HOST_USER=tucorreoaqui@gmail.com
+EMAIL_HOST_PASSWORD=**** **** **** ****
+DEFAULT_FROM_EMAIL="Event-Soft <tucorreoaqui@gmail.com>"
+
+----- EMAIL (BREVO) -----
+USE_BREVO=False
+BREVO_API_KEY=******************************************
+DEFAULT_FROM_EMAIL="Event-Soft <tucorreoaqui@gmail.com>"
+
+
+----- AWS S3 (solo necesario en producción) -----
+AWS_ACCESS_KEY_ID =****************
+AWS_SECRET_ACCESS_KEY =***********************************
+AWS_STORAGE_BUCKET_NAME =Nombre-Bucket-AWS-S3
+AWS_S3_REGION_NAME =us-east-#
+
+
+----- CORREO SUPERUSER -----
+
+SUPERADMIN_EMAIL =Super-User-Even-Soft<halosniper04@gmail.com>
+
 
 9- correr servidor: py .\manage.py runserver
 
@@ -119,16 +118,65 @@ Palabras clave: desarrollo de software, metodología ágil, sistema de informaci
 
 # Despliegue
 
-- La aplicación está desplegada en Render.
-- Los archivos estáticos están almacenados en Cloudinary.
+- La aplicación está desplegada en Render al igual que la db postgrest
+Acá la configuracion de ambiente en Render
+![alt text](image.png)
+
+
+- Los archivos media estan configurados en AWS S3.
+PASO 1 crear una cuenta en [AWSEntrar a S3](https://aws.amazon.com/s3/) 
+PASO 2 crear un Bucket
+PASO 3 Dar permisos al bukcet, poner lo siguiente:
+
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowPublicRead",
+            "Effect": "Allow",
+            "Principal": {
+                "AWS": "*"
+            },
+            "Action": "s3:GetObject",
+            "Resource": "arn:aws:s3:::evensotf-bucket/*"
+        }
+    ]
+}
+
+PASO 4 Entrar a IAM y crear un usuario
+PASO 5 Dar politicas de permiso, por defecto seleccionar AmazonS3FullAccess
+PASO 6 Crear Clave de acceso en este mismo apartado del usuario usuario previamente creado
+PASO 7 copiar y pegar en entorno virtual de render la siguiente con su respectivo valor
+
+AWS_ACCESS_KEY_ID =****************
+AWS_SECRET_ACCESS_KEY =***********************************
+AWS_STORAGE_BUCKET_NAME =Nombre-Bucket-AWS-S3
+AWS_S3_REGION_NAME =us-east-#
+
+
+
 - El envío de correos se realiza mediante Brevo.
+
+PASO 1 Crear una cuenta de brevo
+PASO 2 Ir a configuracion y entrar a SMTP Y API 
+PASO 3 Generar una clave API y MCP
+PASO 4 copiar y pegar en el entorno virtual de render
+
+USE_BREVO=False
+BREVO_API_KEY=******************************************
+DEFAULT_FROM_EMAIL="Event-Soft <tucorreoaqui@gmail.com>"
+
+NOTA IMPORTANTE
+Debe tener un correo verificado en Brevo el cual sera el DEFAULT_FROM_EMAIL
+
+
 
 ------------------------------------------------------------------------------------------------------------
 
 
 # Documentación de Event-Soft
 
-La documentación está en la raíz del proyecto /Documentos_eventsoft
+La documentación está en la raíz del proyecto [text](Documentos_eventsoft)
 se alojan, los manuales de usuario, tecnico, las historias de usuario, sprint backlogs, Diagramas y documentación de proyecto formativo.
 
 ---------------------------------------------------------------------------------------------------------
