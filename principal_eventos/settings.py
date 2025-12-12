@@ -176,6 +176,13 @@ else:
 USE_BREVO = config("USE_BREVO", default=False, cast=bool)
 
 if USE_BREVO:
+    # PRODUCCIÓN: Usar Brevo
+    EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
+    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
+    BREVO_API_KEY = config("BREVO_API_KEY")
+    
+
+else:
     # DESARROLLO: Usar Gmail
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
     EMAIL_HOST = 'smtp.gmail.com'
@@ -184,9 +191,4 @@ if USE_BREVO:
     EMAIL_HOST_USER = config("EMAIL_HOST_USER")
     EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
     DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-
-else:
-    # PRODUCCIÓN: Usar Brevo
-    EMAIL_BACKEND = "anymail.backends.brevo.EmailBackend"
-    DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-    BREVO_API_KEY = config("BREVO_API_KEY")
+    
