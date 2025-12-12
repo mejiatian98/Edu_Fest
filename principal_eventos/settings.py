@@ -108,7 +108,7 @@ WSGI_APPLICATION = 'principal_eventos.wsgi.application'
 
 if DEBUG:
     # DEV – MySQL
-    
+    from decouple import config
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -170,9 +170,16 @@ else:
     }
 
 
+
+
+
+
+
+
 # --------------------------------------------
 # EMAIL – GMAIL EN DEV, BREVO EN PRODUCCIÓN
 # --------------------------------------------
+from decouple import config
 USE_BREVO = config("USE_BREVO", default=False, cast=bool)
 
 if USE_BREVO:
