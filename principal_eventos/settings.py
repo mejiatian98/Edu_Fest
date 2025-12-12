@@ -181,7 +181,6 @@ if USE_BREVO:
     DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
     BREVO_API_KEY = config("BREVO_API_KEY")
     
-
 else:
     # DESARROLLO: Usar Gmail
     EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -191,4 +190,3 @@ else:
     EMAIL_HOST_USER = config("EMAIL_HOST_USER")
     EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD")
     DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL")
-    
