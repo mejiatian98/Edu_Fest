@@ -14,7 +14,9 @@
 ----------------------------------------------------------------------------------------------------
 
 
-# Repositorio de la aplicación: https://github.com/mejiatian98/Edu_Fest.git
+# Repositorio de la aplicación: 
+
+https://github.com/mejiatian98/Edu_Fest.git
 
 
 1- Clonar repositorio: git cloné https://github.com/mejiatian98/Edu_Fest.git  
@@ -157,8 +159,11 @@ Acá la configuracion de ambiente en Render
 - PASO 7 copiar y pegar en entorno virtual de render la siguiente con su respectivo valor
 
 AWS_ACCESS_KEY_ID =****************
+
 AWS_SECRET_ACCESS_KEY =***********************************
+
 AWS_STORAGE_BUCKET_NAME =Nombre-Bucket-AWS-S3
+
 AWS_S3_REGION_NAME =us-east-#
 
 
@@ -171,10 +176,15 @@ AWS_S3_REGION_NAME =us-east-#
 - PASO 4 copiar y pegar en el entorno virtual de render
 
 USE_BREVO=False
+
 BREVO_API_KEY=******************************************
+
 DEFAULT_FROM_EMAIL="Event-Soft <tucorreoaqui@gmail.com>"
 
+
+
 NOTA IMPORTANTE
+
 Debe tener un correo verificado en Brevo el cual sera el DEFAULT_FROM_EMAIL
 
 
