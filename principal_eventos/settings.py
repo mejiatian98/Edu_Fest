@@ -7,6 +7,7 @@ import os
 from django.core.management.utils import get_random_secret_key
 from dotenv import load_dotenv
 import dj_database_url
+from decouple import config
 
 # --------------------------------------------
 # BASE DIR & ENV
@@ -107,7 +108,7 @@ WSGI_APPLICATION = 'principal_eventos.wsgi.application'
 
 if DEBUG:
     # DEV – MySQL
-    from decouple import config
+    
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -116,7 +117,6 @@ if DEBUG:
             'PASSWORD': config('DB_PASSWORD'),
             'HOST': config('DB_HOST'),
             'PORT': config('DB_PORT'),
-            'OPTIONS': {"init_command": "SET sql_mode='STRICT_TRANS_TABLES'"},
         }
     }
 else:
