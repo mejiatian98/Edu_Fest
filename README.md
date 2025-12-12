@@ -36,7 +36,7 @@ ALLOWED_HOSTS=127.0.0.1,localhost
 
 ----- CLOUDINARY -----
 
-CLOUDINARY_URL=cloudinary://481129973331728:@dhkibzgtv
+CLOUDINARY_URL=cloudinary://*************:@dhkibzgtv
 
 
 ----- EMAIL (BREVO) -----
@@ -54,7 +54,7 @@ SUPERADMIN_EMAIL=correosuperadminaca@gmail.com
 
 ------ Configuración de la base de datos ------
 
-DB_NAME=base_datos
+DB_NAME=nombre_de_la_base_datos
 DB_USER=root
 DB_PASSWORD=******
 DB_HOST=localhost
@@ -132,3 +132,4 @@ La documentación está en la raíz del proyecto /Documentos_eventsoft
 se alojan, los manuales de usuario, tecnico, las historias de usuario, sprint backlogs, Diagramas y documentación de proyecto formativo.
 
 ---------------------------------------------------------------------------------------------------------
+
