@@ -28,37 +28,44 @@
 
 
 ----- DJANGO -----
-SECRET_KEY=tu_clave_secreta_super_segura
-DEBUG=True
+
+- SECRET_KEY=tu_clave_secreta_super_segura
+- DEBUG=True
+
 
 --------- BASE DATOS LOCAL --------
-DB_NAME= nombre_de_la_base_de_datos
-DB_USER=root
-DB_PASSWORD=****
-DB_HOST=localhost
-DB_PORT=3306
+
+- DB_NAME= nombre_de_la_base_de_datos
+- DB_USER=root
+- DB_PASSWORD=****
+- DB_HOST=localhost
+- DB_PORT=3306
+
 
 ----- CORREO GMAIL lOCAL -----
-EMAIL_HOST_USER=tucorreoaqui@gmail.com
-EMAIL_HOST_PASSWORD=**** **** **** ****
-DEFAULT_FROM_EMAIL="Event-Soft <tucorreoaqui@gmail.com>"
+- EMAIL_HOST_USER=tucorreoaqui@gmail.com
+- EMAIL_HOST_PASSWORD=**** **** **** ****
+- DEFAULT_FROM_EMAIL="Event-Soft <tucorreoaqui@gmail.com>"
+
 
 ----- EMAIL (BREVO) -----
-USE_BREVO=False
-BREVO_API_KEY=******************************************
-DEFAULT_FROM_EMAIL="Event-Soft <tucorreoaqui@gmail.com>"
+
+- USE_BREVO=False
+- BREVO_API_KEY=******************************************
+- DEFAULT_FROM_EMAIL="Event-Soft <tucorreoaqui@gmail.com>"
 
 
 ----- AWS S3 (solo necesario en producción) -----
-AWS_ACCESS_KEY_ID =****************
-AWS_SECRET_ACCESS_KEY =***********************************
-AWS_STORAGE_BUCKET_NAME =Nombre-Bucket-AWS-S3
-AWS_S3_REGION_NAME =us-east-#
+
+- AWS_ACCESS_KEY_ID =****************
+- AWS_SECRET_ACCESS_KEY =***********************************
+- AWS_STORAGE_BUCKET_NAME =Nombre-Bucket-AWS-S3
+- AWS_S3_REGION_NAME =us-east-#
 
 
 ----- CORREO SUPERUSER -----
 
-SUPERADMIN_EMAIL =Super-User-Even-Soft<halosniper04@gmail.com>
+- SUPERADMIN_EMAIL =Super-User-Even-Soft<halosniper04@gmail.com>
 
 
 9- correr servidor: py .\manage.py runserver
