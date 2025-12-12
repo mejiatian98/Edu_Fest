@@ -232,3 +232,10 @@ USE_TZ = True
 # DEFAULT PRIMARY KEY
 # ---------------------------------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+
+# ---------------------------------------------------
+# CORREO SUPERUSER AL CREARLO
+# ---------------------------------------------------
+SUPERADMIN_EMAIL = config('SUPERADMIN_EMAIL')
