@@ -10,14 +10,12 @@ import dj_database_url
 from decouple import config, UndefinedValueError
 import logging
 
-# Configurar logging
 logger = logging.getLogger(__name__)
 
 # --------------------------------------------
 # BASE DIR & ENV
 # --------------------------------------------
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 load_dotenv(BASE_DIR / ".env")
 
 SECRET_KEY = os.getenv("SECRET_KEY") or get_random_secret_key()
@@ -48,24 +46,15 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
-
-    # Tu proyecto
     'app_usuarios.apps.AppUsuariosConfig',
     'app_admin_eventos',
     'app_asistentes',
     'app_participantes',
     'app_evaluadores',
-
-    # Email Brevo
     'anymail',
-
-    # AWS S3
     'storages',
 ]
 
-# --------------------------------------------
-# sitio ID
-# --------------------------------------------
 SITE_ID = 1
 
 # --------------------------------------------
@@ -157,15 +146,12 @@ USE_S3 = IS_PRODUCTION
 
 if USE_S3:
     try:
-        # Obtener credenciales AWS
         AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID")
         AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY")
         AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME")
         AWS_S3_REGION_NAME = config("AWS_S3_REGION_NAME", default="us-east-2")
         
-        # Validar que las credenciales existen
         if AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY and AWS_STORAGE_BUCKET_NAME:
-            # Configuración de S3
             STORAGES = {
                 "default": {
                     "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
@@ -175,15 +161,16 @@ if USE_S3:
                 },
             }
 
-            # Configuración adicional de S3
             AWS_S3_CUSTOM_DOMAIN = f"{AWS_STORAGE_BUCKET_NAME}.s3.{AWS_S3_REGION_NAME}.amazonaws.com"
             MEDIA_URL = f"https://{AWS_S3_CUSTOM_DOMAIN}/"
             
             AWS_S3_OBJECT_PARAMETERS = {
                 'CacheControl': 'max-age=86400',
             }
+            
+            # ⭐ SIN ACL - Usa bucket policy en su lugar
             AWS_QUERYSTRING_AUTH = False
-            AWS_DEFAULT_ACL = "public-read"
+            AWS_DEFAULT_ACL = None
             AWS_S3_FILE_OVERWRITE = False
             AWS_S3_VERIFY = True
             
@@ -191,17 +178,14 @@ if USE_S3:
         else:
             raise ValueError("Credenciales de AWS incompletas")
             
-    except (UndefinedValueError, ValueError) as e:
+    except Exception as e:
         logger.error(f"❌ Error configurando AWS S3: {e}")
-        logger.warning("⚠️ Usando almacenamiento local como fallback")
         USE_S3 = False
         MEDIA_URL = "/media/"
         MEDIA_ROOT = BASE_DIR / "media"
 else:
-    # Media local para desarrollo
     MEDIA_URL = "/media/"
     MEDIA_ROOT = BASE_DIR / "media"
-    logger.info("📁 Usando almacenamiento local para media")
 
 # ---------------------------------------------------
 # EMAIL CONFIGURATION
@@ -222,7 +206,6 @@ try:
         else:
             raise ValueError("BREVO_API_KEY no encontrado")
     else:
-        # Gmail fallback
         EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
         EMAIL_HOST = 'smtp.gmail.com'
         EMAIL_PORT = 587
@@ -232,9 +215,8 @@ try:
         DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@ejemplo.com")
         logger.info("✅ Email configurado con Gmail")
         
-except (UndefinedValueError, ValueError) as e:
+except Exception as e:
     logger.error(f"❌ Error configurando email: {e}")
-    # Fallback a consola para desarrollo
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
     DEFAULT_FROM_EMAIL = "noreply@ejemplo.com"
     logger.warning("⚠️ Email configurado para mostrar en consola")
@@ -272,30 +254,6 @@ USE_TZ = True
 # DEFAULT PRIMARY KEY
 # ---------------------------------------------------
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-# ---------------------------------------------------
-# LOGGING CONFIGURATION
-# ---------------------------------------------------
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
-}
 
 # ---------------------------------------------------
 # SUPERADMIN EMAIL
