@@ -131,7 +131,7 @@ AWS_STORAGE_BUCKET_NAME=Nombre-Bucket-AWS-S3
 AWS_S3_REGION_NAME=us-east-#
 
 # ----- CORREO SUPERUSER -----
-SUPERADMIN_EMAIL=halosniper04@gmail.com
+SUPERADMIN_EMAIL=correosuperadmin@gmail.com
 ```
 
 ### 9️⃣ Correr servidor
