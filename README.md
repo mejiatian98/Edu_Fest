@@ -170,7 +170,7 @@ Los archivos media están configurados en **AWS S3**.
                 "AWS": "*"
             },
             "Action": "s3:GetObject",
-            "Resource": "arn:aws:s3:::evensotf-bucket/*"
+            "Resource": "arn:aws:s3:::nombre-del-bucket/*"
         }
     ]
 }
