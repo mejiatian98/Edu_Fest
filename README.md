@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎯 EVENT-SOFT
+# EVENT-SOFT
 ### Sistema de Gestión de Eventos
 
 <p align="center">
