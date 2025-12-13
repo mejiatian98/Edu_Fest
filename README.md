@@ -132,7 +132,7 @@ Acá la configuracion de ambiente en Render
 
 - Los archivos media estan configurados en AWS S3.
 
-- PASO 1 crear una cuenta en [AWSEntrar a S3](https://aws.amazon.com/s3/) 
+- PASO 1 crear una cuenta en [AWS S3](https://aws.amazon.com/s3/) 
 - PASO 2 crear un Bucket
 - PASO 3 Dar permisos al bukcet, poner lo siguiente:
 
@@ -168,7 +168,7 @@ AWS_S3_REGION_NAME =us-east-#
 
 - El envío de correos se realiza mediante Brevo.
 
-- PASO 1 Crear una cuenta de brevo
+- PASO 1 Crear una cuenta de [Brevo](https://www.brevo.com/es/)
 - PASO 2 Ir a configuracion y entrar a SMTP Y API 
 - PASO 3 Generar una clave API y MCP
 - PASO 4 copiar y pegar en el entorno virtual de render
